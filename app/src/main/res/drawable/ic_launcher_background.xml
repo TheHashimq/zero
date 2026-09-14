@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Dark Background -->
+    <path
+        android:fillColor="#0A0A0A"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
+
+    <!-- Subtle radial gradient effect using circles -->
+    <!-- Outer dark circle -->
+    <path
+        android:fillColor="#0F0F0F"
+        android:pathData="M54,0 C33,0 16,17 16,38 C16,59 33,76 54,76 C75,76 92,59 92,38 C92,17 75,0 54,0 Z" />
+
+    <!-- Middle tone circle -->
+    <path
+        android:fillColor="#141414"
+        android:pathData="M54,8 C38,8 25,21 25,37 C25,53 38,66 54,66 C70,66 83,53 83,37 C83,21 70,8 54,8 Z" />
+
+    <!-- Subtle accent lines (representing digital/tech theme) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:strokeWidth="0.5"
+        android:strokeColor="#222222"
+        android:pathData="M10,30 L35,30" />
+
+    <path
+        android:fillColor="#1A1A1A"
+        android:strokeWidth="0.5"
+        android:strokeColor="#222222"
+        android:pathData="M73,30 L98,30" />
+
+    <path
+        android:fillColor="#1A1A1A"
+        android:strokeWidth="0.5"
+        android:strokeColor="#222222"
+        android:pathData="M10,78 L35,78" />
+
+    <path
+        android:fillColor="#1A1A1A"
+        android:strokeWidth="0.5"
+        android:strokeColor="#222222"
+        android:pathData="M73,78 L98,78" />
+
+</vector>

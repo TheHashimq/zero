@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Helmet Main Body (Dark Charcoal) -->
+    <path
+        android:fillColor="#0F0F0F"
+        android:pathData="M54,8 L62,20 L70,28 L75,45 L78,62 L75,75 L54,90 L33,75 L30,62 L25,45 L30,28 L38,20 Z" />
+
+    <!-- Left Cheek Guard (Sharp angle) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M38,20 L28,32 L25,48 L30,60 L40,55 L42,38 Z" />
+
+    <!-- Right Cheek Guard (Sharp angle) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M70,20 L80,32 L83,48 L78,60 L68,55 L66,38 Z" />
+
+    <!-- Chin Guard (Pointed downward) -->
+    <path
+        android:fillColor="#0A0A0A"
+        android:pathData="M45,70 L54,85 L63,70 L58,72 L54,80 L50,72 Z" />
+
+    <!-- Main Face Visor (Deep charcoal-black) -->
+    <path
+        android:fillColor="#0D0D15"
+        android:pathData="M54,22 C42,22 35,35 35,50 C35,65 42,78 54,82 C66,78 73,65 73,50 C73,35 66,22 54,22 Z" />
+
+    <!-- Visor Metallic Border (Silver) -->
+    <path
+        android:fillColor="#999999"
+        android:pathData="M54,24 C43,24 37,36 37,50 C37,64 43,76 54,80 C65,76 71,64 71,50 C71,36 65,24 54,24 Z"
+        android:strokeWidth="1"
+        android:strokeColor="#CCCCCC" />
+
+    <!-- Left Eye Lens (Crimson Red - Glowing effect) -->
+    <path
+        android:fillColor="#CC1111"
+        android:pathData="M42,42 C38,42 35,46 35,50 C35,54 38,58 42,58 C46,58 49,54 49,50 C49,46 46,42 42,42 Z" />
+
+    <!-- Left Eye Glow/Highlight -->
+    <path
+        android:fillColor="#FF4444"
+        android:pathData="M40,44 C38,44 36,46 36,48 C36,50 38,52 40,52 C42,52 44,50 44,48 C44,46 42,44 40,44 Z" />
+
+    <!-- Right Eye Lens (Crimson Red - Glowing effect) -->
+    <path
+        android:fillColor="#CC1111"
+        android:pathData="M66,42 C62,42 59,46 59,50 C59,54 62,58 66,58 C70,58 73,54 73,50 C73,46 70,42 66,42 Z" />
+
+    <!-- Right Eye Glow/Highlight -->
+    <path
+        android:fillColor="#FF4444"
+        android:pathData="M64,44 C62,44 60,46 60,48 C60,50 62,52 64,52 C66,52 68,50 68,48 C68,46 66,44 64,44 Z" />
+
+    <!-- Top Crown Blade (Metallic Silver) -->
+    <path
+        android:fillColor="#ABABAB"
+        android:pathData="M52,8 L54,6 L56,8 L55,25 L53,25 Z" />
+
+    <!-- Crown Blade Shadow -->
+    <path
+        android:fillColor="#7A7A7A"
+        android:pathData="M54,6 L56,8 L55,25 L54,8 Z" />
+
+    <!-- Forehead Ridge/Accent Line (Metallic) -->
+    <path
+        android:fillColor="#888888"
+        android:pathData="M45,26 L54,20 L63,26 L60,35 L48,35 Z" />
+
+    <!-- Left Mandible Guard -->
+    <path
+        android:fillColor="#151515"
+        android:pathData="M35,60 L30,68 L32,75 L42,72 L40,65 Z" />
+
+    <!-- Right Mandible Guard -->
+    <path
+        android:fillColor="#151515"
+        android:pathData="M73,60 L78,68 L76,75 L66,72 L68,65 Z" />
+
+    <!-- Left Collar Accent (Dark Red) -->
+    <path
+        android:fillColor="#8B0000"
+        android:pathData="M38,72 L35,78 L42,80 L45,75 Z" />
+
+    <!-- Right Collar Accent (Dark Red) -->
+    <path
+        android:fillColor="#8B0000"
+        android:pathData="M70,72 L73,78 L66,80 L63,75 Z" />
+
+</vector>
