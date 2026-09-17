@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
@@ -21,11 +22,12 @@ class ZeroAccessibilityService : AccessibilityService() {
                 val state = prefs.getString("LOCK_STATE", "IDLE")
                 if (state == "UNLOCKED") {
                     prefs.edit().putString("LOCK_STATE", "IDLE").apply()
+                    logEscapeAttempt("Screen off detected - grace period revoked")
                     Log.d("ZeroDebug", "Screen turned off. Grace period ended, re-arming shield.")
                 }
             }
         }
-        registerReceiver(screenReceiver, filter)
+        registerReceiver(screenReceiver, filter, Context.RECEIVER_EXPORTED)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -37,17 +39,19 @@ class ZeroAccessibilityService : AccessibilityService() {
                 val prefs = getSharedPreferences("ZeroPrefs", Context.MODE_PRIVATE)
                 val state = prefs.getString("LOCK_STATE", "IDLE")
                 val unlockTime = prefs.getLong("UNLOCK_TIMESTAMP", 0L)
-                val now = System.currentTimeMillis()
+                val now = SystemClock.elapsedRealtime()
 
                 var shouldBlock = false
 
                 when (state) {
                     "IDLE" -> {
                         shouldBlock = true
+                        logEscapeAttempt("Attempted to access $packageName in IDLE state")
                     }
                     "COUNTDOWN" -> {
                         if (now < unlockTime) {
                             shouldBlock = true
+                            logEscapeAttempt("Attempted to access $packageName during cooldown")
                         } else {
                             val gracePeriodExpiry = now + (3 * 60 * 1000L)
                             prefs.edit()
@@ -62,7 +66,7 @@ class ZeroAccessibilityService : AccessibilityService() {
                         if (now > graceExpiry) {
                             prefs.edit().putString("LOCK_STATE", "IDLE").apply()
                             shouldBlock = true
-                            Log.d("ZeroDebug", "3-minute window expired. Re-arming shield.")
+                            logEscapeAttempt("Grace period expired, re-arming shield")
                         }
                     }
                 }
@@ -82,6 +86,18 @@ class ZeroAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
+
+    private fun logEscapeAttempt(attempt: String) {
+        val prefs = getSharedPreferences("ZeroPrefs", Context.MODE_PRIVATE)
+        val timestamp = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+        val existingLog = prefs.getString("ESCAPE_LOG", "") ?: ""
+        val newLog = if (existingLog.isEmpty()) {
+            "$timestamp  $attempt"
+        } else {
+            "$existingLog\n$timestamp  $attempt"
+        }
+        prefs.edit().putString("ESCAPE_LOG", newLog).apply()
+    }
 
     override fun onDestroy() {
         super.onDestroy()

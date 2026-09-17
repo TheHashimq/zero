@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Zero" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Zero" parent="android:Theme.Material.NoActionBar">
+        <!-- Primary Colors -->
+        <item name="android:colorBackground">@color/bg_primary</item>
+        <item name="android:colorForeground">@color/text_primary</item>
+        <item name="android:colorAccent">@color/geass_orange</item>
+
+        <!-- Text Colors -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+
+        <!-- Button Styling -->
+        <item name="android:buttonStyle">@style/GeassButton</item>
+
+        <!-- Window -->
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">false</item>
+    </style>
+
+    <style name="GeassButton" parent="android:Widget.Material.Button">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
 </resources>

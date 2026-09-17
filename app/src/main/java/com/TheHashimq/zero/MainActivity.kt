@@ -1,9 +1,11 @@
 package com.TheHashimq.zero
 
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.os.SystemClock
 import android.provider.Settings
 import android.widget.Button
 import android.widget.TextView
@@ -34,17 +36,40 @@ class MainActivity : AppCompatActivity() {
         btnAction?.setOnClickListener {
             start90MinCooldown()
         }
+
+        tvTimer?.setOnLongClickListener {
+            showEscapeLog()
+            true
+        }
     }
 
     override fun onResume() {
         super.onResume()
         evaluateState()
+        checkProtectionStatus()
+    }
+
+    private fun checkProtectionStatus() {
+        val prefs = getSharedPreferences("ZeroPrefs", Context.MODE_PRIVATE)
+        val isAccessibilityEnabled = isAccessibilityServiceEnabled()
+
+        if (!isAccessibilityEnabled) {
+            tvStatus?.text = "⚠ PROTECTION DISABLED"
+            tvTimer?.text = "—"
+            btnAction?.isEnabled = false
+        }
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val accessibilityManager = getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+        return accessibilityManager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_GENERIC)
+            .any { it.id.contains("com.TheHashimq.zero/.ZeroAccessibilityService") }
     }
 
     private fun evaluateState() {
         val prefs = getSharedPreferences("ZeroPrefs", Context.MODE_PRIVATE)
         val state = prefs.getString("LOCK_STATE", "IDLE")
-        val now = System.currentTimeMillis()
+        val now = SystemClock.elapsedRealtime()
 
         when (state) {
             "IDLE" -> {
@@ -77,7 +102,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun start90MinCooldown() {
         val prefs = getSharedPreferences("ZeroPrefs", Context.MODE_PRIVATE)
-        val unlockTime = System.currentTimeMillis() + (90 * 60 * 1000L)
+        val unlockTime = SystemClock.elapsedRealtime() + (90 * 60 * 1000L)
 
         prefs.edit()
             .putString("LOCK_STATE", "COUNTDOWN")
@@ -89,7 +114,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startGracePeriod() {
         val prefs = getSharedPreferences("ZeroPrefs", Context.MODE_PRIVATE)
-        val graceExpiry = System.currentTimeMillis() + (3 * 60 * 1000L)
+        val graceExpiry = SystemClock.elapsedRealtime() + (3 * 60 * 1000L)
 
         prefs.edit()
             .putString("LOCK_STATE", "UNLOCKED")
@@ -122,6 +147,22 @@ class MainActivity : AppCompatActivity() {
                 evaluateState()
             }
         }.start()
+    }
+
+    private fun showEscapeLog() {
+        val prefs = getSharedPreferences("ZeroPrefs", Context.MODE_PRIVATE)
+        val escapeLog = prefs.getString("ESCAPE_LOG", "No escape attempts recorded") ?: "No escape attempts recorded"
+
+        val builder = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        builder.setTitle("ESCAPE ATTEMPTS")
+        builder.setMessage(escapeLog)
+        builder.setNeutralButton("CLEAR") { _, _ ->
+            prefs.edit().putString("ESCAPE_LOG", "").apply()
+        }
+        builder.setPositiveButton("CLOSE") { dialog, _ ->
+            dialog.dismiss()
+        }
+        builder.show()
     }
 
     override fun onDestroy() {

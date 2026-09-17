@@ -1,5 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Geass Theme Colors -->
+    <!-- Background -->
+    <color name="bg_primary">#0A0A0A</color>
+    <color name="bg_secondary">#111111</color>
+    <color name="bg_tertiary">#1A1A1A</color>
+
+    <!-- Geass Accent - Iconic Orange -->
+    <color name="geass_orange">#FF6B00</color>
+    <color name="geass_orange_light">#FF7700</color>
+    <color name="geass_orange_glow">#FF9944</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#CCCCCC</color>
+    <color name="text_tertiary">#888888</color>
+    <color name="text_dark">#555555</color>
+
+    <!-- Status/UI -->
+    <color name="status_active">#00DD00</color>
+    <color name="status_warning">#FFAA00</color>
+    <color name="border_accent">#FF6B00</color>
+
+    <!-- Legacy (kept for compatibility) -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
