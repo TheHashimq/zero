@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm")
+    `java-library`
 }
 
 kotlin {
@@ -7,7 +8,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":foundation-contract"))
+    api(project(":foundation-contract"))
     testImplementation(project(":foundation-testing"))
     testImplementation(kotlin("test-junit"))
 }

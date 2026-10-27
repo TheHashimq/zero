@@ -19,6 +19,12 @@ import zero.foundation.contract.ZeroModule
 /**
  * Manages explicit module registrations and their lifecycle.
  *
+ * Lifecycle is one-shot: [startAll] may be called once, and after it has been
+ * called the registry cannot be started again, including after [stopAll].
+ *
+ * Exceptions thrown by module callbacks are recorded in the report. Errors
+ * (such as OutOfMemoryError) are not caught and propagate to the caller.
+ *
  * Not thread-safe. Call from one thread.
  */
 class ModuleRegistry {
@@ -45,7 +51,8 @@ class ModuleRegistry {
 
     /**
      * Starts every registered module in registration order, passing [context].
-     * A module whose onStart throws is marked FAILED; the others still start.
+     * A module whose onStart throws an Exception is marked FAILED; the others still start.
+     * Errors propagate and are not caught.
      * Throws IllegalStateException if called more than once.
      */
     fun startAll(context: ModuleContext): StartReport {
@@ -60,7 +67,7 @@ class ModuleRegistry {
                 entry.module.onStart(context)
                 entry.status = ModuleStatus.RUNNING
                 startedIds.add(id)
-            } catch (failure: Throwable) {
+            } catch (failure: Exception) {
                 entry.status = ModuleStatus.FAILED
                 failed[id] = failure
             }
@@ -85,7 +92,7 @@ class ModuleRegistry {
                 entry.module.onStop()
                 entry.status = ModuleStatus.STOPPED
                 stoppedIds.add(id)
-            } catch (failure: Throwable) {
+            } catch (failure: Exception) {
                 entry.status = ModuleStatus.FAILED
                 failed[id] = failure
             }

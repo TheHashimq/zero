@@ -13,6 +13,7 @@ package zero.foundation.registry
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import zero.foundation.contract.ModuleContext
 import zero.foundation.contract.ModuleId
@@ -90,5 +91,18 @@ class StartupFailureTest {
         assertEquals(listOf(last.id, first.id), report.stopped)
         assertEquals(emptyMap(), report.failed)
         assertEquals(listOf("start:alpha-one", "start:beta-two", "start:gamma-three", "stop:gamma-three", "stop:alpha-one"), log)
+    }
+
+    /** Lets fatal errors propagate instead of recording them as module failures. */
+    @Test
+    fun fatalErrorDuringStartPropagates() {
+        val registry = ModuleRegistry()
+        registry.register(
+            FakeModule(ModuleId("beta-two"), startError = OutOfMemoryError("simulated")),
+        )
+
+        assertFailsWith<OutOfMemoryError> {
+            registry.startAll(object : ModuleContext {})
+        }
     }
 }

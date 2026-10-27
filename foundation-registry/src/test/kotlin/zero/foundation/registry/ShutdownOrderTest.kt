@@ -13,6 +13,7 @@ package zero.foundation.registry
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import zero.foundation.contract.ModuleContext
 import zero.foundation.contract.ModuleId
@@ -71,5 +72,35 @@ class ShutdownOrderTest {
         registry.stopAll()
 
         modules.forEach { assertEquals(ModuleStatus.STOPPED, registry.status(it.id)) }
+    }
+
+    /** Makes a second stopAll a no-op that stops nothing. */
+    @Test
+    fun secondStopAllDoesNothing() {
+        val log = mutableListOf<String>()
+        val registry = ModuleRegistry()
+        val module = FakeModule(ModuleId("alpha-one"), log = log)
+        registry.register(module)
+        registry.startAll(object : ModuleContext {})
+        registry.stopAll()
+
+        val second = registry.stopAll()
+
+        assertEquals(StopReport(emptyList(), emptyMap()), second)
+        assertEquals(listOf("start:alpha-one", "stop:alpha-one"), log)
+        assertEquals(ModuleStatus.STOPPED, registry.status(module.id))
+    }
+
+    /** Rejects startAll after the lifecycle has been stopped. */
+    @Test
+    fun startAllAfterStopAllFails() {
+        val registry = ModuleRegistry()
+        registry.register(FakeModule(ModuleId("alpha-one")))
+        registry.startAll(object : ModuleContext {})
+        registry.stopAll()
+
+        assertFailsWith<IllegalStateException> {
+            registry.startAll(object : ModuleContext {})
+        }
     }
 }
