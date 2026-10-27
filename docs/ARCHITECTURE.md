@@ -15,6 +15,8 @@
   zero.foundation.runtime
 :foundation-events
   zero.foundation.events
+:foundation-health
+  zero.foundation.health
 :foundation-testing
   zero.foundation.testing
 ```
@@ -27,7 +29,8 @@
 | `foundation-persistence` | Provides namespaced key-value storage behind a backend interface. | Phase 3: done |
 | `foundation-runtime` | Supplies services passed to modules at startup. | Phase 4: done |
 | `foundation-events` | Append-only event log, in-process bus, and single record entry point. | Phase 5: done |
-| `foundation-testing` | Supplies fake modules, clock sources, storage backends, and event test support. | Phase 1-5: done |
+| `foundation-health` | Component health reports and permission state. | Phase 6: done |
+| `foundation-testing` | Supplies fake modules, clock sources, storage backends, and event test support. | Phase 1-6: done |
 
 ## Dependency rules
 
@@ -36,16 +39,21 @@
 - `foundation-clock` has no main-code project dependencies; its tests use `foundation-testing`.
 - `foundation-persistence` exposes `foundation-contract` and uses `foundation-testing` only in tests.
 - `foundation-events` exposes `foundation-contract`, `foundation-clock`, and `foundation-persistence`; its tests use `foundation-testing`.
-- `foundation-runtime` exposes `foundation-contract`, `foundation-clock`, `foundation-persistence`, and `foundation-events`; its tests use `foundation-testing` and `foundation-registry`.
+- `foundation-health` exposes `foundation-contract` and `foundation-clock`; its tests use `foundation-testing`.
+- `foundation-runtime` exposes the foundation services, including `foundation-health`; its tests use `foundation-testing` and `foundation-registry`.
 - `foundation-testing` exposes `foundation-contract`, `foundation-clock`, `foundation-persistence`, and `foundation-events` to test consumers.
-- `app` depends on `foundation-registry`, `foundation-clock`, `foundation-persistence`, `foundation-runtime`, and `foundation-events`; no foundation module depends on `app`.
+- `app` depends on the foundation runtime, registry, events, clock, persistence, and health modules; no foundation module depends on `app`.
 - Foundation modules are pure Kotlin/JVM and contain no Android imports.
 - Android clock and persistence adapters live in `app`; foundation policies stay in their JVM modules.
 - `ZeroApplication` is the composition root and starts the registry once per process.
 
 ## Not yet built
 
-- Permissions
 - Logging
 - Navigation
 - Design
+
+## Pending verification
+
+- Phase 4 device checks: startup count, boot-state sequence, and self-check errors remain unconfirmed.
+- Phase 6 accessibility health transition has not been verified on a device.

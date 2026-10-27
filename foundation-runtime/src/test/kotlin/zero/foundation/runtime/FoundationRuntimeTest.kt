@@ -22,6 +22,7 @@ import zero.foundation.contract.ZeroModule
 import zero.foundation.events.EventBus
 import zero.foundation.events.EventService
 import zero.foundation.events.PersistentEventLog
+import zero.foundation.health.HealthService
 import zero.foundation.persistence.ModuleStoreFactory
 import zero.foundation.persistence.StoreKey
 import zero.foundation.registry.ModuleRegistry
@@ -46,7 +47,7 @@ class FoundationRuntimeTest {
     fun exposesTheClockItWasGiven() {
         val clock = clock()
         val stores = ModuleStoreFactory(InMemoryKeyValueBackend())
-        val services = ZeroServices(clock, stores, events(stores, clock))
+        val services = ZeroServices(clock, stores, events(stores, clock), HealthService(emptyList()))
 
         assertSame(clock, services.clock)
     }
@@ -56,7 +57,7 @@ class FoundationRuntimeTest {
     fun exposesTheStoreFactoryItWasGiven() {
         val clock = clock()
         val stores = ModuleStoreFactory(InMemoryKeyValueBackend())
-        val services = ZeroServices(clock, stores, events(stores, clock))
+        val services = ZeroServices(clock, stores, events(stores, clock), HealthService(emptyList()))
 
         assertSame(stores, services.stores)
     }
@@ -67,7 +68,7 @@ class FoundationRuntimeTest {
         val backend = InMemoryKeyValueBackend()
         val stores = ModuleStoreFactory(backend)
         val clock = clock()
-        val services = ZeroServices(clock, stores, events(stores, clock))
+        val services = ZeroServices(clock, stores, events(stores, clock), HealthService(emptyList()))
         val module = WritingModule(stores)
         val registry = ModuleRegistry()
         registry.register(module)
@@ -84,9 +85,20 @@ class FoundationRuntimeTest {
         val clock = clock()
         val stores = ModuleStoreFactory(InMemoryKeyValueBackend())
         val eventService = events(stores, clock)
-        val services = ZeroServices(clock, stores, eventService)
+        val services = ZeroServices(clock, stores, eventService, HealthService(emptyList()))
 
         assertSame(eventService, services.events)
+    }
+
+    /** Exposes the exact health service instance passed to the constructor. */
+    @Test
+    fun exposesTheHealthServiceItWasGiven() {
+        val clock = clock()
+        val stores = ModuleStoreFactory(InMemoryKeyValueBackend())
+        val health = HealthService(emptyList())
+        val services = ZeroServices(clock, stores, events(stores, clock), health)
+
+        assertSame(health, services.health)
     }
 
     /** Test module that records its context and writes one value into its own store. */

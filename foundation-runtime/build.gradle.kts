@@ -12,7 +12,8 @@ dependencies {
     api(project(":foundation-clock"))
     api(project(":foundation-persistence"))
     api(project(":foundation-events"))
-    testImplementation(project(":foundation-testing"))
+    api(project(":foundation-health"))
     testImplementation(project(":foundation-registry"))
+    testImplementation(project(":foundation-testing"))
     testImplementation(kotlin("test-junit"))
 }
