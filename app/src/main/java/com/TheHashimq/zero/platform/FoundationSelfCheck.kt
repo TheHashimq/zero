@@ -4,7 +4,7 @@
  * TAKES: A ZeroClock and a ModuleStoreFactory.
  * GIVES: Logcat lines under tag ZeroFoundation.
  * OWNS: Two keys in the "foundation" store namespace: launch-count and last-boot-id.
- * DOES NOT OWN: Any user-facing behavior. Removed in Phase 6 when real health checks exist.
+ * DOES NOT OWN: Any user-facing behavior. Removed after the Phase 4 device checks pass.
  * DEPENDENCIES: foundation-clock, foundation-persistence, Android logging.
  * CONTRACT: Never throws. Stores the boot ID only after FIRST_SEEN or REBOOTED, as BootReconciler requires.
  * FAILURE BEHAVIOR: Any exception is logged as an error under the same tag and swallowed.

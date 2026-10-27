@@ -19,6 +19,7 @@ import zero.foundation.contract.ModuleContext
 import zero.foundation.contract.ModuleId
 import zero.foundation.contract.ModuleStatus
 import zero.foundation.testing.FakeModule
+import zero.foundation.testing.ModuleContractAssertions
 
 /** Tests registration and normal module lifecycle behavior. */
 class ModuleRegistryTest {
@@ -152,5 +153,23 @@ class ModuleRegistryTest {
         assertEquals(emptyMap(), report.failed)
         assertEquals(3, log.count { it.startsWith("stop:") })
         modules.forEach { assertEquals(ModuleStatus.STOPPED, registry.status(it.id)) }
+    }
+
+    /** Every FakeModule used by the registry tests satisfies the module contract. */
+    @Test
+    fun fakeModulesSatisfyModuleContract() {
+        val module = FakeModule(ModuleId("alpha-one"), displayName = "Alpha")
+
+        ModuleContractAssertions.assertValid(module)
+    }
+
+    /** A module with a blank display name fails the contract check. */
+    @Test
+    fun blankDisplayNameFailsContract() {
+        val module = FakeModule(ModuleId("alpha-one"), displayName = " ")
+
+        assertFailsWith<AssertionError> {
+            ModuleContractAssertions.assertValid(module)
+        }
     }
 }
