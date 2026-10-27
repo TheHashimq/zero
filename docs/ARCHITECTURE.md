@@ -32,6 +32,8 @@
 | `foundation-health` | Component health reports and permission state. | Phase 6: done |
 | `foundation-testing` | Supplies fake modules, clock sources, storage backends, and event test support. | Phase 1-6: done |
 
+Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the accessibility health probe removed. The app launches to `PlaceholderActivity` only; health reports the clock.
+
 ## Dependency rules
 
 - `foundation-contract` has no project dependencies.
@@ -56,4 +58,3 @@
 ## Pending verification
 
 - Phase 4 device checks: startup count, boot-state sequence, and self-check errors remain unconfirmed.
-- Phase 6 accessibility health transition has not been verified on a device.

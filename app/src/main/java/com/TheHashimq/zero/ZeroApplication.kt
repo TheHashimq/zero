@@ -17,7 +17,6 @@ import com.TheHashimq.zero.platform.FoundationSelfCheck
 import com.TheHashimq.zero.platform.clock.AndroidBootIdSource
 import com.TheHashimq.zero.platform.clock.AndroidMonotonicSource
 import com.TheHashimq.zero.platform.clock.AndroidWallClockSource
-import com.TheHashimq.zero.platform.health.AndroidAccessibilityProbe
 import com.TheHashimq.zero.platform.persistence.SharedPreferencesKeyValueBackend
 import zero.foundation.clock.DefaultZeroClock
 import zero.foundation.contract.ModuleId
@@ -26,7 +25,6 @@ import zero.foundation.events.EventService
 import zero.foundation.events.PersistentEventLog
 import zero.foundation.health.ClockHealthSource
 import zero.foundation.health.HealthService
-import zero.foundation.health.PermissionHealthSource
 import zero.foundation.persistence.ModuleStoreFactory
 import zero.foundation.registry.ModuleRegistry
 import zero.foundation.runtime.ZeroServices
@@ -53,7 +51,6 @@ class ZeroApplication : Application() {
         val health = HealthService(
             listOf(
                 ClockHealthSource(clock),
-                PermissionHealthSource("accessibility", AndroidAccessibilityProbe(this)),
             ),
         )
 
