@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Zero</string>
+    <string name="protection_service_description">Zero sends you to Home when a protected app opens during a commitment. It reads only which app is open.</string>
 </resources>

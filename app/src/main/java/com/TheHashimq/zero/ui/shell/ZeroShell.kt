@@ -27,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,12 +37,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.TheHashimq.zero.ui.protection.ProtectionScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zero.foundation.design.DesignTokens
 import zero.foundation.design.StatusRole
+import zero.feature.protection.runtime.ProtectionModule
 import zero.foundation.health.HealthService
 import zero.foundation.health.HealthState
-import zero.foundation.health.SystemHealth
 import zero.foundation.navigation.NavCategory
 import zero.foundation.navigation.NavigationRegistry
 
@@ -55,7 +58,7 @@ private sealed interface Screen {
 /** Root composable: drawer menu plus the selected screen. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZeroShell(navigation: NavigationRegistry, health: HealthService) {
+fun ZeroShell(navigation: NavigationRegistry, health: HealthService, protection: ProtectionModule) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var screen by remember { mutableStateOf<Screen>(Screen.Main) }
@@ -127,8 +130,10 @@ fun ZeroShell(navigation: NavigationRegistry, health: HealthService) {
             ) {
                 when (val current = screen) {
                     Screen.Main -> Text("Zero — foundation build")
-                    Screen.Diagnostics -> DiagnosticsContent(health.report())
-                    is Screen.Module -> Text("Screen for '${current.id}' is not built yet")
+                    Screen.Diagnostics -> DiagnosticsContent(health)
+                    is Screen.Module ->
+                        if (current.id == "protection") ProtectionScreen(protection)
+                        else Text("Screen for '${current.id}' is not built yet")
                 }
             }
         }
@@ -143,7 +148,16 @@ private fun titleFor(screen: Screen): String = when (screen) {
 
 /** Live health values, colored by status role. */
 @Composable
-private fun DiagnosticsContent(system: SystemHealth) {
+private fun DiagnosticsContent(health: HealthService) {
+    var system by remember(health) { mutableStateOf(health.report()) }
+
+    LaunchedEffect(health) {
+        while (true) {
+            system = health.report()
+            delay(1_000L)
+        }
+    }
+
     Column {
         Text(
             text = "Overall: ${system.overall}",

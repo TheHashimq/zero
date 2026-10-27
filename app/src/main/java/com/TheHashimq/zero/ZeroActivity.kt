@@ -4,10 +4,10 @@
  * TAKES: The launch intent and the services built by ZeroApplication.
  * GIVES: The shell UI.
  * OWNS: No state beyond the Compose tree.
- * DOES NOT OWN: Navigation registration, health checks, or protection behavior.
+ * DOES NOT OWN: Navigation registration, health checks, or protection decisions.
  * DEPENDENCIES: ZeroApplication, ui/shell, ui/theme.
  * CONTRACT: Reads services only after ZeroApplication has created them.
- * FAILURE BEHAVIOR: If services are missing, the lateinit access throws during launch.
+ * FAILURE BEHAVIOR: Missing services throw during launch.
  */
 package com.TheHashimq.zero
 
@@ -20,10 +20,10 @@ import com.TheHashimq.zero.ui.theme.ZeroTheme
 class ZeroActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val services = (application as ZeroApplication).services
+        val app = application as ZeroApplication
         setContent {
             ZeroTheme {
-                ZeroShell(services.navigation, services.health)
+                ZeroShell(app.services.navigation, app.services.health, app.protectionModule)
             }
         }
     }

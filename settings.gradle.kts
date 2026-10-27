@@ -35,4 +35,5 @@ include(":foundation-health")
 include(":foundation-navigation")
 include(":foundation-design")
 include(":feature-protection")
+include(":feature-protection-runtime")
  
