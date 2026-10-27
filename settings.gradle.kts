@@ -29,4 +29,5 @@ include(":foundation-registry")
 include(":foundation-testing")
 include(":foundation-clock")
 include(":foundation-persistence")
+include(":foundation-runtime")
  
