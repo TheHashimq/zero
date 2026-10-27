@@ -19,6 +19,9 @@ import zero.foundation.clock.ZeroClock
 import zero.foundation.contract.ModuleContext
 import zero.foundation.contract.ModuleId
 import zero.foundation.contract.ZeroModule
+import zero.foundation.events.EventBus
+import zero.foundation.events.EventService
+import zero.foundation.events.PersistentEventLog
 import zero.foundation.persistence.ModuleStoreFactory
 import zero.foundation.persistence.StoreKey
 import zero.foundation.registry.ModuleRegistry
@@ -35,11 +38,15 @@ class FoundationRuntimeTest {
         FakeBootIdSource(),
     )
 
+    private fun events(stores: ModuleStoreFactory, clock: ZeroClock): EventService =
+        EventService(PersistentEventLog(stores.storeFor(ModuleId("events")), clock), EventBus())
+
     /** Exposes the exact clock instance passed to the constructor. */
     @Test
     fun exposesTheClockItWasGiven() {
         val clock = clock()
-        val services = ZeroServices(clock, ModuleStoreFactory(InMemoryKeyValueBackend()))
+        val stores = ModuleStoreFactory(InMemoryKeyValueBackend())
+        val services = ZeroServices(clock, stores, events(stores, clock))
 
         assertSame(clock, services.clock)
     }
@@ -47,8 +54,9 @@ class FoundationRuntimeTest {
     /** Exposes the exact store factory instance passed to the constructor. */
     @Test
     fun exposesTheStoreFactoryItWasGiven() {
+        val clock = clock()
         val stores = ModuleStoreFactory(InMemoryKeyValueBackend())
-        val services = ZeroServices(clock(), stores)
+        val services = ZeroServices(clock, stores, events(stores, clock))
 
         assertSame(stores, services.stores)
     }
@@ -58,7 +66,8 @@ class FoundationRuntimeTest {
     fun startedModuleReceivesServicesAndCanPersist() {
         val backend = InMemoryKeyValueBackend()
         val stores = ModuleStoreFactory(backend)
-        val services = ZeroServices(clock(), stores)
+        val clock = clock()
+        val services = ZeroServices(clock, stores, events(stores, clock))
         val module = WritingModule(stores)
         val registry = ModuleRegistry()
         registry.register(module)
@@ -67,6 +76,17 @@ class FoundationRuntimeTest {
 
         assertSame(services, module.received)
         assertEquals(setOf("module.writer-one.ran"), backend.keys)
+    }
+
+    /** Exposes the exact event service instance passed to the constructor. */
+    @Test
+    fun exposesTheEventServiceItWasGiven() {
+        val clock = clock()
+        val stores = ModuleStoreFactory(InMemoryKeyValueBackend())
+        val eventService = events(stores, clock)
+        val services = ZeroServices(clock, stores, eventService)
+
+        assertSame(eventService, services.events)
     }
 
     /** Test module that records its context and writes one value into its own store. */

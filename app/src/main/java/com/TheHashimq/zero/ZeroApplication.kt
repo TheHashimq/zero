@@ -18,6 +18,10 @@ import com.TheHashimq.zero.platform.clock.AndroidMonotonicSource
 import com.TheHashimq.zero.platform.clock.AndroidWallClockSource
 import com.TheHashimq.zero.platform.persistence.SharedPreferencesKeyValueBackend
 import zero.foundation.clock.DefaultZeroClock
+import zero.foundation.contract.ModuleId
+import zero.foundation.events.EventBus
+import zero.foundation.events.EventService
+import zero.foundation.events.PersistentEventLog
 import zero.foundation.persistence.ModuleStoreFactory
 import zero.foundation.registry.ModuleRegistry
 import zero.foundation.runtime.ZeroServices
@@ -37,8 +41,12 @@ class ZeroApplication : Application() {
             AndroidBootIdSource(),
         )
         val stores = ModuleStoreFactory(SharedPreferencesKeyValueBackend(this))
+        val events = EventService(
+            PersistentEventLog(stores.storeFor(ModuleId("events")), clock),
+            EventBus(),
+        )
 
-        registry.startAll(ZeroServices(clock, stores))
+        registry.startAll(ZeroServices(clock, stores, events))
         FoundationSelfCheck.run(clock, stores)
     }
 }

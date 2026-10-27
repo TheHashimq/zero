@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":foundation-clock"))
     implementation(project(":foundation-persistence"))
     implementation(project(":foundation-runtime"))
+    implementation(project(":foundation-events"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
