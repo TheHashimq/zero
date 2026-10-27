@@ -1,12 +1,12 @@
 /*
  * MODULE: app (composition root)
- * PURPOSE: Builds foundation services once per process, starts the registry, and logs health.
+ * PURPOSE: Builds foundation services once per process, starts the registry, freezes navigation, and logs health.
  * TAKES: Android Application lifecycle callbacks.
- * GIVES: A started ModuleRegistry, the self-check, and health diagnostics at launch.
- * OWNS: The registry instance and the services it was started with.
- * DOES NOT OWN: Module behavior, UI, or enforcement.
+ * GIVES: A started ModuleRegistry, the services for the UI, the self-check, and health log lines.
+ * OWNS: The registry and the services instance.
+ * DOES NOT OWN: Module behavior, UI rendering, or enforcement.
  * DEPENDENCIES: Foundation modules and platform adapters.
- * CONTRACT: Exactly one ModuleRegistry exists per process, started once in onCreate.
+ * CONTRACT: Exactly one registry and one services instance exist per process; navigation is frozen after startup.
  * FAILURE BEHAVIOR: Startup callback failures are reported by the registry; health checks contain source exceptions.
  */
 package com.TheHashimq.zero
@@ -25,6 +25,7 @@ import zero.foundation.events.EventService
 import zero.foundation.events.PersistentEventLog
 import zero.foundation.health.ClockHealthSource
 import zero.foundation.health.HealthService
+import zero.foundation.navigation.NavigationRegistry
 import zero.foundation.persistence.ModuleStoreFactory
 import zero.foundation.registry.ModuleRegistry
 import zero.foundation.runtime.ZeroServices
@@ -34,7 +35,11 @@ class ZeroApplication : Application() {
     /** The process-wide registry. Started once in onCreate. */
     val registry: ModuleRegistry = ModuleRegistry()
 
-    /** Constructs foundation services and starts the registry once when the process launches. */
+    /** Services built in onCreate, read by the UI. */
+    lateinit var services: ZeroServices
+        private set
+
+    /** Constructs services, starts modules, freezes navigation, and logs health. */
     override fun onCreate() {
         super.onCreate()
 
@@ -48,13 +53,12 @@ class ZeroApplication : Application() {
             PersistentEventLog(stores.storeFor(ModuleId("events")), clock),
             EventBus(),
         )
-        val health = HealthService(
-            listOf(
-                ClockHealthSource(clock),
-            ),
-        )
+        val health = HealthService(listOf(ClockHealthSource(clock)))
+        val navigation = NavigationRegistry()
 
-        registry.startAll(ZeroServices(clock, stores, events, health))
+        services = ZeroServices(clock, stores, events, health, navigation)
+        registry.startAll(services)
+        navigation.freeze()
         FoundationSelfCheck.run(clock, stores)
         logHealth(health)
     }

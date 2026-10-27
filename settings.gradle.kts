@@ -32,4 +32,6 @@ include(":foundation-persistence")
 include(":foundation-runtime")
 include(":foundation-events")
 include(":foundation-health")
+include(":foundation-navigation")
+include(":foundation-design")
  

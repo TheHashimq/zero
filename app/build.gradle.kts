@@ -42,6 +42,8 @@ dependencies {
     implementation(project(":foundation-runtime"))
     implementation(project(":foundation-events"))
     implementation(project(":foundation-health"))
+    implementation(project(":foundation-navigation"))
+    implementation(project(":foundation-design"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
