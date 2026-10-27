@@ -36,6 +36,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":foundation-registry"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)

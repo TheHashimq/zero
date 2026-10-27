@@ -24,4 +24,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Zero"
 include(":app")
+include(":foundation-contract")
+include(":foundation-registry")
+include(":foundation-testing")
  
