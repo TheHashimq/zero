@@ -9,4 +9,5 @@ kotlin {
 
 dependencies {
     api(project(":foundation-contract"))
+    api(project(":foundation-clock"))
 }
