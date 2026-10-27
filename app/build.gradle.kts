@@ -38,6 +38,7 @@ android {
 dependencies {
     implementation(project(":foundation-registry"))
     implementation(project(":foundation-clock"))
+    implementation(project(":foundation-persistence"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
