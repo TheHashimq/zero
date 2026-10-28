@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.TheHashimq.zero.ui.protection.ProtectionScreen
+import com.TheHashimq.zero.ui.protection.ProtectedAppsScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zero.foundation.design.DesignTokens
@@ -131,9 +132,11 @@ fun ZeroShell(navigation: NavigationRegistry, health: HealthService, protection:
                 when (val current = screen) {
                     Screen.Main -> Text("Zero — foundation build")
                     Screen.Diagnostics -> DiagnosticsContent(health)
-                    is Screen.Module ->
-                        if (current.id == "protection") ProtectionScreen(protection)
-                        else Text("Screen for '${current.id}' is not built yet")
+                    is Screen.Module -> when (current.id) {
+                        "protection" -> ProtectionScreen(protection)
+                        ProtectionModule.PROTECTED_APPS_ROUTE -> ProtectedAppsScreen(protection)
+                        else -> Text("Screen for '${current.id}' is not built yet")
+                    }
                 }
             }
         }

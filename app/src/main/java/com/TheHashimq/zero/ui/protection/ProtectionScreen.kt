@@ -6,7 +6,7 @@
  * OWNS: Only the displayed values.
  * DOES NOT OWN: Protection decisions. Every action goes through the coordinator.
  * DEPENDENCIES: feature-protection-runtime, Compose Material3.
- * CONTRACT: Start is enabled only when the service is connected and the state is Armed.
+ * CONTRACT: Start is enabled only when the service is connected, apps are protected, and state is Armed.
  * FAILURE BEHAVIOR: Storage errors are shown on screen and never crash the UI.
  */
 package com.TheHashimq.zero.ui.protection
@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,6 +44,7 @@ fun ProtectionScreen(module: ProtectionModule) {
     var state by remember { mutableStateOf(coordinator.state()) }
     var now by remember { mutableLongStateOf(coordinator.nowMillis()) }
     var connected by remember { mutableStateOf(coordinator.isServiceConnected()) }
+    var protectedCount by remember { mutableIntStateOf(0) }
     var events by remember { mutableStateOf(coordinator.recentEvents(5)) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -55,6 +57,11 @@ fun ProtectionScreen(module: ProtectionModule) {
             }
             now = coordinator.nowMillis()
             connected = coordinator.isServiceConnected()
+            try {
+                protectedCount = module.repository?.packages()?.size ?: 0
+            } catch (failure: PersistenceException) {
+                message = "Storage error: ${failure.message}"
+            }
             events = coordinator.recentEvents(5)
             delay(1_000L)
         }
@@ -66,18 +73,19 @@ fun ProtectionScreen(module: ProtectionModule) {
         if (!connected) {
             Text("Turn on Zero's accessibility service in Settings before starting a commitment.")
         }
+        Text("Protected apps: $protectedCount")
 
         Button(
             onClick = {
                 try {
                     val started = coordinator.startCommitment(TEST_COMMITMENT_MILLIS)
-                    message = if (started) null else "Cannot start now: boot ID unavailable or a commitment is running."
+                    message = if (started) null else "Cannot start now: add a protected app, check boot availability, or finish the running commitment."
                 } catch (failure: PersistenceException) {
                     message = "Storage error: ${failure.message}"
                 }
                 state = coordinator.state()
             },
-            enabled = state == ProtectionState.Armed && connected,
+            enabled = state == ProtectionState.Armed && connected && protectedCount > 0,
         ) {
             Text("Start test commitment (2 min)")
         }

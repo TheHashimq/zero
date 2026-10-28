@@ -41,10 +41,10 @@
 | `foundation-navigation` | Menu entries contributed by modules, grouped by category. | Phase 7: done |
 | `foundation-design` | Color palette tokens and status roles. | Phase 7: done |
 | `feature-protection` | Pure protection state machine and foreground decision policy. | Phase 8a: done |
-| `feature-protection-runtime` | Persists protection state, coordinates events and health, and registers navigation. | Phase 8b: done |
+| `feature-protection-runtime` | Persists protection state and the add-only protected-app list, coordinates events and health, and registers navigation. | Phase 8b-9b: done |
 | `foundation-testing` | Supplies fake modules, clock sources, storage backends, and event test support. | Phase 1-7: done |
 
-Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the old accessibility health probe removed. The app launches to the Zero shell, which currently protects Android Settings during a commitment.
+Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the old accessibility health probe removed. The app launches to the Zero shell; users select launchable apps to protect.
 
 ## Dependency rules
 
@@ -74,10 +74,14 @@ Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the o
 
 - Phase 4 device checks: startup count, boot-state sequence, and self-check errors remain unconfirmed.
 - Phase 7 device checks: shell drawer, Diagnostics health display, and Logcat launch lines remain unconfirmed.
+- Phase 9 emulator checks: launcher-app discovery, add confirmation, persistent selection, and protected-app count were verified. Accessibility-service connection and foreground redirect remain unconfirmed because the service was not enabled.
 
 ## Protection limits
 
 - A user can turn off the accessibility service when no commitment is running.
 - A protected app may flicker briefly before the redirect.
 - Protection depends on the accessibility service being connected. If it disconnects, nothing is blocked, and Diagnostics shows `DEGRADED`.
-- Phase 8b uses a two-minute test commitment and protects only Android Settings; later phases replace these defaults.
+- The protected-app list is persistent and add-only. Malformed stored entries are ignored; there is no removal or clearing UI.
+- The picker shows app labels only, excludes Zero, and lists only apps with launcher activities visible to the app.
+- Entries are package identifiers and are retained if an app is uninstalled; a missing app is shown by its package name.
+- Phase 8b uses a two-minute test commitment; later phases replace this duration.
