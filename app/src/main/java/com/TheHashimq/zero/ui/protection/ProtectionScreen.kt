@@ -1,12 +1,12 @@
 /*
  * MODULE: app (protection screen)
- * PURPOSE: Shows protection state, the protected-app count, and the commitment minimum. Starts commitments and raises the minimum.
+ * PURPOSE: Shows protection status, the minimum commitment, controls to raise it, start, and recent events.
  * TAKES: The ProtectionModule from ZeroApplication.
  * GIVES: A Compose screen that refreshes every second.
- * OWNS: Only the displayed values.
+ * OWNS: Only the displayed values and the last message.
  * DOES NOT OWN: Protection or minimum rules. Every action goes through the coordinator or repository.
- * DEPENDENCIES: feature-protection-runtime, Compose Material3.
- * CONTRACT: Start uses the current committed minimum. Start is enabled only when Armed, connected, and at least one app is protected.
+ * DEPENDENCIES: feature-protection-runtime, foundation-design, Compose Material3, shared components.
+ * CONTRACT: Start is enabled only when Armed, connected, and at least one app is protected.
  * FAILURE BEHAVIOR: Storage errors are shown on screen and never crash the UI.
  */
 package com.TheHashimq.zero.ui.protection
@@ -14,9 +14,10 @@ package com.TheHashimq.zero.ui.protection
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,12 +25,20 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.TheHashimq.zero.ui.components.PrimaryButton
+import com.TheHashimq.zero.ui.components.SectionLabel
+import com.TheHashimq.zero.ui.components.SecondaryButton
+import com.TheHashimq.zero.ui.components.StatusLine
 import kotlinx.coroutines.delay
 import zero.feature.protection.CooldownRules
 import zero.feature.protection.ProtectionState
 import zero.feature.protection.RaiseResult
+import zero.feature.protection.TimeFormat
 import zero.feature.protection.runtime.ProtectionModule
+import zero.foundation.design.DesignTokens
 import zero.foundation.persistence.PersistenceException
 
 private const val MINUTE_MILLIS = 60_000L
@@ -41,7 +50,7 @@ fun ProtectionScreen(module: ProtectionModule) {
     val repository = module.repository
     val cooldown = module.cooldown
     if (coordinator == null || repository == null || cooldown == null) {
-        Text("Protection is starting")
+        StatusLine("Protection is starting", Color(DesignTokens.WARNING))
         return
     }
 
@@ -52,7 +61,6 @@ fun ProtectionScreen(module: ProtectionModule) {
     var minimum by remember { mutableLongStateOf(CooldownRules.FLOOR_MILLIS) }
     var events by remember { mutableStateOf(coordinator.recentEvents(5)) }
     var message by remember { mutableStateOf<String?>(null) }
-    var storageError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(coordinator, repository, cooldown) {
         while (true) {
@@ -61,9 +69,8 @@ fun ProtectionScreen(module: ProtectionModule) {
                 protectedCount = repository.packages().size
                 minimum = cooldown.minimumMillis()
                 events = coordinator.recentEvents(5)
-                storageError = null
             } catch (failure: PersistenceException) {
-                storageError = "Storage error: ${failure.message}"
+                message = "Storage error: ${failure.message}"
             }
             now = coordinator.nowMillis()
             connected = coordinator.isServiceConnected()
@@ -74,65 +81,93 @@ fun ProtectionScreen(module: ProtectionModule) {
     val canStart = state == ProtectionState.Armed && connected && protectedCount > 0
     val raiseOptions = RAISE_OPTIONS_MINUTES.filter { it * MINUTE_MILLIS > minimum }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("State: ${describe(state, now)}", style = MaterialTheme.typography.titleMedium)
-        Text("Protected apps: $protectedCount")
-        Text("Minimum commitment: ${minimum / MINUTE_MILLIS} min")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SectionLabel("Status")
+            StatusLine(describe(state, now), MaterialTheme.colorScheme.onBackground)
+            StatusLine("Protected apps: $protectedCount", MaterialTheme.colorScheme.onSurfaceVariant)
+            StatusLine(
+                "Minimum commitment: ${minimum / MINUTE_MILLIS} min",
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
-        if (raiseOptions.isEmpty()) {
-            Text("Minimum is at its maximum.")
-        } else {
-            Text("Raise minimum (cannot be lowered)", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                raiseOptions.forEach { minutes ->
-                    Button(onClick = {
-                        message = try {
-                            raiseMessage(cooldown.raise(minutes * MINUTE_MILLIS))
-                        } catch (failure: PersistenceException) {
-                            storageError = "Storage error: ${failure.message}"
-                            null
+        if (!connected) {
+            StatusLine(
+                "Turn on Zero's accessibility service in Settings before starting a commitment.",
+                Color(DesignTokens.WARNING),
+            )
+        }
+        if (protectedCount == 0) {
+            StatusLine(
+                "Protect at least one app first, from Protected apps in the menu.",
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionLabel("Minimum")
+            if (raiseOptions.isEmpty()) {
+                StatusLine("Minimum is at its maximum.", MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                StatusLine(
+                    "Raise only. The minimum cannot be lowered.",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    raiseOptions.forEach { minutes ->
+                        SecondaryButton(
+                            text = "$minutes min",
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            message = try {
+                                raiseMessage(cooldown.raise(minutes * MINUTE_MILLIS))
+                            } catch (failure: PersistenceException) {
+                                "Storage error: ${failure.message}"
+                            }
+                            try {
+                                minimum = cooldown.minimumMillis()
+                            } catch (failure: PersistenceException) {
+                                message = "Storage error: ${failure.message}"
+                            }
                         }
-                        try {
-                            minimum = cooldown.minimumMillis()
-                        } catch (failure: PersistenceException) {
-                            storageError = "Storage error: ${failure.message}"
-                        }
-                    }) {
-                        Text("$minutes")
                     }
                 }
             }
         }
 
-        if (!connected) {
-            Text("Turn on Zero's accessibility service in Settings before starting a commitment.")
-        }
-        if (protectedCount == 0) {
-            Text("Protect at least one app first, from Protected apps in the menu.")
-        }
-
-        Button(
-            onClick = {
-                try {
-                    val started = coordinator.startCommitment(minimum)
-                    message = if (started) null else "Cannot start now: check the boot ID, protected apps, and state."
-                } catch (failure: PersistenceException) {
-                    storageError = "Storage error: ${failure.message}"
-                }
-                state = coordinator.state()
-            },
+        PrimaryButton(
+            text = "Start ${minimum / MINUTE_MILLIS} min commitment",
             enabled = canStart,
         ) {
-            Text("Start commitment (${minimum / MINUTE_MILLIS} min)")
+            message = try {
+                val started = coordinator.startCommitment(minimum)
+                if (started) null else "Cannot start right now: check the boot ID, protected apps, and state."
+            } catch (failure: PersistenceException) {
+                "Storage error: ${failure.message}"
+            }
+            state = coordinator.state()
         }
 
-        message?.let { Text(it) }
-        storageError?.let { Text(it) }
+        message?.let { StatusLine(it, MaterialTheme.colorScheme.onBackground) }
 
-        Text("Recent events", style = MaterialTheme.typography.labelLarge)
-        events.forEach { event ->
-            val details = event.payload.entries.joinToString { "${it.key}=${it.value}" }
-            Text(if (details.isEmpty()) event.type.value else "${event.type.value}  $details")
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SectionLabel("Recent events")
+            if (events.isEmpty()) {
+                StatusLine("No events yet.", MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            events.forEach { event ->
+                val details = event.payload.entries.joinToString { "${it.key}=${it.value}" }
+                StatusLine(
+                    if (details.isEmpty()) event.type.value else "${event.type.value}  $details",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -145,7 +180,7 @@ private fun raiseMessage(result: RaiseResult): String = when (result) {
 }
 
 private fun describe(state: ProtectionState, now: Long): String = when (state) {
-    ProtectionState.Armed -> "Armed (nothing blocked)"
-    is ProtectionState.Countdown -> "Countdown, ${maxOf(0L, state.endsAtMillis - now) / 1000} s left"
-    is ProtectionState.Grace -> "Grace, ${maxOf(0L, state.endsAtMillis - now) / 1000} s left"
+    ProtectionState.Armed -> "State: Armed (nothing blocked)"
+    is ProtectionState.Countdown -> "State: Committed, ${TimeFormat.remaining(state.endsAtMillis - now)} left"
+    is ProtectionState.Grace -> "State: Grace, ${TimeFormat.remaining(state.endsAtMillis - now)} left"
 }

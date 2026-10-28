@@ -114,7 +114,7 @@ fun MainScreen(module: ProtectionModule, onOpenProtectedApps: () -> Unit) {
                         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     )
                 }
-                protectedCount == 0 -> PrimaryButton("Choose apps to protect", onOpenProtectedApps)
+                protectedCount == 0 -> PrimaryButton("Choose apps to protect", onClick = onOpenProtectedApps)
                 state == ProtectionState.Armed -> PrimaryButton(
                     "Start ${minimum / MINUTE_MILLIS} min commitment",
                 ) {
