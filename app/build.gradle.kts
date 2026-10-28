@@ -36,6 +36,16 @@ android {
 }
 
 dependencies {
+    implementation(project(":foundation-registry"))
+    implementation(project(":foundation-clock"))
+    implementation(project(":foundation-persistence"))
+    implementation(project(":foundation-runtime"))
+    implementation(project(":foundation-events"))
+    implementation(project(":foundation-health"))
+    implementation(project(":foundation-navigation"))
+    implementation(project(":foundation-design"))
+    implementation(project(":feature-protection-runtime"))
+    implementation(project(":feature-history"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)

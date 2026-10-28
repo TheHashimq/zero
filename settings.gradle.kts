@@ -24,4 +24,17 @@ dependencyResolutionManagement {
 
 rootProject.name = "Zero"
 include(":app")
+include(":foundation-contract")
+include(":foundation-registry")
+include(":foundation-testing")
+include(":foundation-clock")
+include(":foundation-persistence")
+include(":foundation-runtime")
+include(":foundation-events")
+include(":foundation-health")
+include(":foundation-navigation")
+include(":foundation-design")
+include(":feature-protection")
+include(":feature-protection-runtime")
+include(":feature-history")
  
