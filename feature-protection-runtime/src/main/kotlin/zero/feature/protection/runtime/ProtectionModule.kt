@@ -1,8 +1,8 @@
 /*
  * MODULE: feature-protection-runtime
- * PURPOSE: Registers protection with the runtime and exposes its coordinator and protected-app repository.
+ * PURPOSE: Registers protection with the runtime and exposes its coordinator and repositories.
  * TAKES: Zero's own package name, plus ZeroServices during startup.
- * GIVES: The coordinator, the repository, and two navigation entries.
+ * GIVES: The coordinator, the app and cooldown repositories, and two navigation entries.
  * OWNS: The coordinator and repository references.
  * DOES NOT OWN: The accessibility connection or the screens.
  * DEPENDENCIES: foundation-runtime, foundation-navigation, feature-protection-runtime.
@@ -35,6 +35,11 @@ class ProtectionModule(private val ownPackage: String) : ZeroModule {
     var repository: ProtectedAppRepository? = null
         private set
 
+    /** Available after a successful start. */
+    @Volatile
+    var cooldown: CooldownRepository? = null
+        private set
+
     /** True when the accessibility service is connected. */
     fun isServiceConnected(): Boolean = coordinator?.isServiceConnected() == true
 
@@ -43,11 +48,20 @@ class ProtectionModule(private val ownPackage: String) : ZeroModule {
             ?: throw ModuleException("ProtectionModule requires ZeroServices")
         val store = services.stores.storeFor(id)
         val protectedApps = ProtectedAppRepository(store, ownPackage)
-        val created = ProtectionCoordinator(services.clock, store, services.events, id, ownPackage) {
+        val minimum = CooldownRepository(store)
+        val created = ProtectionCoordinator(
+            services.clock,
+            store,
+            services.events,
+            id,
+            ownPackage,
+            { minimum.minimumMillis() },
+        ) {
             protectedApps.packages()
         }
         created.reconcileBoot()
         repository = protectedApps
+        cooldown = minimum
         coordinator = created
         services.navigation.register(NavEntry(id.value, displayName, NavCategory.PROTECTION))
         services.navigation.register(

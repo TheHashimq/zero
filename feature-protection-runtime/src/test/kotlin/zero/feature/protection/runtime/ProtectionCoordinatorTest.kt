@@ -18,6 +18,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import zero.feature.protection.ProtectionAction
 import zero.feature.protection.ProtectionConstants
+import zero.feature.protection.CooldownRules
 import zero.feature.protection.ProtectionState
 import zero.foundation.clock.BootState
 import zero.foundation.clock.DefaultZeroClock
@@ -51,7 +52,9 @@ class ProtectionCoordinatorTest {
             EventBus(),
         )
 
-        fun coordinator() = ProtectionCoordinator(clock, store, events, source, OWN) { setOf(SETTINGS) }
+        fun coordinator() = ProtectionCoordinator(clock, store, events, source, OWN, { MINUTE }) {
+            setOf(SETTINGS)
+        }
 
         fun types(): List<String> = events.recent(50).map { it.type.value }.reversed()
     }
@@ -269,11 +272,53 @@ class ProtectionCoordinatorTest {
     fun appAddedDuringCommitmentIsBlockedImmediately() {
         val f = Fixture()
         val protectedSet = mutableSetOf(SETTINGS)
-        val c = ProtectionCoordinator(f.clock, f.store, f.events, f.source, OWN) { protectedSet }
+        val c = ProtectionCoordinator(f.clock, f.store, f.events, f.source, OWN, { MINUTE }) { protectedSet }
         c.startCommitment(MINUTE)
 
         protectedSet.add("com.example.notes")
 
         assertEquals(ProtectionAction.RedirectHome, c.onForegroundChanged("com.example.notes"))
+    }
+
+    /** A commitment shorter than the committed minimum is rejected and leaves the state Armed. */
+    @Test
+    fun startBelowCommittedMinimumIsRejected() {
+        val f = Fixture()
+        val c = ProtectionCoordinator(f.clock, f.store, f.events, f.source, OWN, { 120 * MINUTE }) {
+            setOf(SETTINGS)
+        }
+
+        assertFalse(c.startCommitment(90 * MINUTE))
+        assertEquals(ProtectionState.Armed, c.state())
+    }
+
+    /** A commitment exactly at the committed minimum is accepted. */
+    @Test
+    fun startAtCommittedMinimumIsAccepted() {
+        val f = Fixture()
+        val c = ProtectionCoordinator(f.clock, f.store, f.events, f.source, OWN, { 120 * MINUTE }) {
+            setOf(SETTINGS)
+        }
+
+        assertTrue(c.startCommitment(120 * MINUTE))
+    }
+
+    /** A commitment above 180 minutes is rejected even when the minimum is at the floor. */
+    @Test
+    fun startAboveMaxIsRejected() {
+        val f = Fixture()
+        val c = ProtectionCoordinator(
+            f.clock,
+            f.store,
+            f.events,
+            f.source,
+            OWN,
+            { CooldownRules.FLOOR_MILLIS },
+        ) {
+            setOf(SETTINGS)
+        }
+
+        assertFalse(c.startCommitment(181 * MINUTE))
+        assertEquals(ProtectionState.Armed, c.state())
     }
 }

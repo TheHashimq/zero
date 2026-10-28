@@ -16,6 +16,7 @@
 package zero.feature.protection.runtime
 
 import zero.feature.protection.ProtectionAction
+import zero.feature.protection.CooldownRules
 import zero.feature.protection.ProtectionEvent
 import zero.feature.protection.ProtectionMachine
 import zero.feature.protection.ProtectionPolicy
@@ -38,6 +39,7 @@ class ProtectionCoordinator(
     private val events: EventService,
     private val source: ModuleId,
     private val ownPackage: String,
+    private val minimumMillis: () -> Long = { CooldownRules.FLOOR_MILLIS },
     private val protectedPackages: () -> Set<String>,
 ) {
     private var state: ProtectionState = ProtectionState.Armed
@@ -72,6 +74,7 @@ class ProtectionCoordinator(
     /** Starts a commitment. Returns false if the machine rejects it. */
     fun startCommitment(durationMillis: Long): Boolean {
         if (protectedPackages().isEmpty()) return false
+        if (!CooldownRules.isAllowedDuration(durationMillis, minimumMillis())) return false
         val bootKnown = clock.currentBootId() != null
         val result = ProtectionMachine.reduce(
             state,
