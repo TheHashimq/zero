@@ -13,7 +13,6 @@ package com.TheHashimq.zero
 
 import android.app.Application
 import android.util.Log
-import com.TheHashimq.zero.platform.FoundationSelfCheck
 import com.TheHashimq.zero.platform.clock.AndroidBootIdSource
 import com.TheHashimq.zero.platform.clock.AndroidMonotonicSource
 import com.TheHashimq.zero.platform.clock.AndroidWallClockSource
@@ -80,7 +79,6 @@ class ZeroApplication : Application() {
         registry.register(historyModule)
         registry.startAll(services)
         navigation.freeze()
-        FoundationSelfCheck.run(clock, stores)
         logHealth(health)
     }
 
