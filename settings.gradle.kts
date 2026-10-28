@@ -36,4 +36,5 @@ include(":foundation-navigation")
 include(":foundation-design")
 include(":feature-protection")
 include(":feature-protection-runtime")
+include(":feature-history")
  
