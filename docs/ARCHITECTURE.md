@@ -39,8 +39,8 @@
 | `foundation-events` | Append-only event log, in-process bus, and single record entry point. | Phase 5: done |
 | `foundation-health` | Component health reports and permission state. | Phase 6: done |
 | `foundation-navigation` | Menu entries contributed by modules, grouped by category. | Phase 7: done |
-| `foundation-design` | Color palette tokens and status roles. | Phase 7: done |
-| `feature-protection` | Pure protection state machine, foreground decision policy, and one-way commitment minimum rules. | Phase 8a-10a: done |
+| `foundation-design` | Color palette, contrast checks, type scale, and status roles. | Phase 7-11b: done |
+| `feature-protection` | Pure protection state machine, foreground decision policy, one-way commitment minimum rules, and timer formatting. | Phase 8a-11b: done |
 | `feature-protection-runtime` | Persists protection state, the add-only protected-app list, and the commitment minimum; coordinates events and health and registers navigation. | Phase 8b-10b: done |
 | `foundation-testing` | Supplies fake modules, clock sources, storage backends, and event test support. | Phase 1-7: done |
 
@@ -76,6 +76,7 @@ Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the o
 - Phase 7 device checks: shell drawer, Diagnostics health display, and Logcat launch lines remain unconfirmed.
 - Phase 9 emulator checks: launcher-app discovery, add confirmation, persistent selection, protected-app count, and foreground redirect were verified.
 - Phase 10 emulator checks: Q1-Q3 and Q5 were verified. The UI omits the current minimum from its raise options, so same-value behavior was verified by unit tests rather than a second UI tap. Reboot and service-disable checks still require extended manual verification.
+- Phase 11 emulator checks: M1, M2, M3, M4, and M6 passed. M5 (waiting for the full 90-minute countdown and grace transition) remains pending. These checks were run on an emulator, not a physical phone.
 
 ## Protection limits
 
@@ -89,3 +90,5 @@ Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the o
 - A missing stored minimum means 90 minutes. An unreadable or out-of-range stored value fails closed at 180 minutes; this is deliberate and cannot be recovered inside the app.
 - Each commitment uses the current minimum; no separate duration can be selected.
 - Phase 8b used a two-minute test commitment; Phase 10 replaces it with the committed minimum.
+- The main screen uses the foundation-design color/type tokens and shows state, remaining time, protected-app count, and one state-dependent primary action. The Protection and Protected apps screens retain their previous layouts pending Phase 11c.
+- Contrast calculations use WCAG relative luminance; the token checks require AA contrast for normal text and status/accent colors against the background.

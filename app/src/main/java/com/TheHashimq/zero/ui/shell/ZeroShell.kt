@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.TheHashimq.zero.ui.protection.ProtectionScreen
 import com.TheHashimq.zero.ui.protection.ProtectedAppsScreen
+import com.TheHashimq.zero.ui.main.MainScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zero.foundation.design.DesignTokens
@@ -130,7 +131,9 @@ fun ZeroShell(navigation: NavigationRegistry, health: HealthService, protection:
                 contentAlignment = Alignment.TopStart,
             ) {
                 when (val current = screen) {
-                    Screen.Main -> Text("Zero — foundation build")
+                    Screen.Main -> MainScreen(protection) {
+                        go(Screen.Module(ProtectionModule.PROTECTED_APPS_ROUTE, "Protected apps"))
+                    }
                     Screen.Diagnostics -> DiagnosticsContent(health)
                     is Screen.Module -> when (current.id) {
                         "protection" -> ProtectionScreen(protection)
