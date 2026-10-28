@@ -1,13 +1,14 @@
 /*
  * MODULE: feature-protection-runtime
- * PURPOSE: Persists protection state, applies machine and policy decisions, and records events.
- * TAKES: ZeroClock, a ModuleStore, EventService, the source ModuleId, the own package, and the protected packages.
+ * PURPOSE: Persists protection state, enforces the committed duration minimum, applies policy, and records events.
+ * TAKES: ZeroClock, a ModuleStore, EventService, the source ModuleId, the own package, and live policy values.
  * GIVES: Start, tick, screen-off, boot reconciliation, and foreground decisions.
  * OWNS: The current ProtectionState, the last redirect time, the service-connected flag, and the dropped-event count.
  * DOES NOT OWN: Performing the redirect or the accessibility connection. The service adapter does that.
  * DEPENDENCIES: feature-protection, foundation-clock, foundation-persistence, foundation-events.
  * CONTRACT: The new state is written to the store before it is applied in memory. A failed write leaves state unchanged.
- *           Protected packages are read at each decision. Start is rejected when none are protected.
+ *           Protected packages and the minimum duration are read at each decision. Start is rejected when no app is protected
+ *           or the requested duration is outside the minimum-to-maximum range.
  *           A Start is rejected without a known boot ID. A reboot during a countdown restarts it with full duration.
  *           Event recording failures are counted in droppedEventCount and never block protection.
  * FAILURE BEHAVIOR: Store write failures throw PersistenceException from startCommitment, tick, onScreenOff,

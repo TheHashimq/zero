@@ -6,7 +6,7 @@
  * OWNS: No production state.
  * DOES NOT OWN: Accessibility or screen behavior.
  * DEPENDENCIES: feature-protection-runtime, foundation-registry, foundation-testing.
- * CONTRACT: A valid context exposes coordinator and repository and registers both entries; an invalid context fails the module.
+ * CONTRACT: A valid context exposes coordinator and both repositories and registers both entries; an invalid context fails the module.
  * FAILURE BEHAVIOR: Assertion failures identify a broken startup path.
  */
 package zero.feature.protection.runtime
@@ -42,7 +42,7 @@ class ProtectionModuleTest {
         return ZeroServices(clock, stores, events, HealthService(emptyList()), navigation)
     }
 
-    /** A valid start exposes the coordinator and repository and registers both entries. */
+    /** A valid start exposes the coordinator and repositories and registers both entries. */
     @Test
     fun startRegistersNavigationAndExposesCoordinatorAndRepository() {
         val navigation = NavigationRegistry()
@@ -55,13 +55,14 @@ class ProtectionModuleTest {
         assertEquals(ModuleStatus.RUNNING, registry.status(ModuleId("protection")))
         assertNotNull(module.coordinator)
         assertNotNull(module.repository)
+        assertNotNull(module.cooldown)
         assertEquals(
             listOf("protection", "protected-apps"),
             navigation.grouped().getValue(NavCategory.PROTECTION).map { it.id },
         )
     }
 
-    /** A context that is not ZeroServices fails the module and leaves no coordinator or repository. */
+    /** A context that is not ZeroServices fails the module and leaves its dependencies unset. */
     @Test
     fun startWithoutZeroServicesFailsTheModule() {
         val module = ProtectionModule("com.TheHashimq.zero")
@@ -74,5 +75,6 @@ class ProtectionModuleTest {
         assertEquals(ModuleStatus.FAILED, registry.status(ModuleId("protection")))
         assertNull(module.coordinator)
         assertNull(module.repository)
+        assertNull(module.cooldown)
     }
 }
