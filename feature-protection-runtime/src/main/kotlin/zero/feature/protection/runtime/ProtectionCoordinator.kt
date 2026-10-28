@@ -7,6 +7,7 @@
  * DOES NOT OWN: Performing the redirect or the accessibility connection. The service adapter does that.
  * DEPENDENCIES: feature-protection, foundation-clock, foundation-persistence, foundation-events.
  * CONTRACT: The new state is written to the store before it is applied in memory. A failed write leaves state unchanged.
+ *           Protected packages are read at each decision. Start is rejected when none are protected.
  *           A Start is rejected without a known boot ID. A reboot during a countdown restarts it with full duration.
  *           Event recording failures are counted in droppedEventCount and never block protection.
  * FAILURE BEHAVIOR: Store write failures throw PersistenceException from startCommitment, tick, onScreenOff,
@@ -37,7 +38,7 @@ class ProtectionCoordinator(
     private val events: EventService,
     private val source: ModuleId,
     private val ownPackage: String,
-    private val protectedPackages: Set<String>,
+    private val protectedPackages: () -> Set<String>,
 ) {
     private var state: ProtectionState = ProtectionState.Armed
     private var lastRedirectMillis: Long? = null
@@ -70,6 +71,7 @@ class ProtectionCoordinator(
 
     /** Starts a commitment. Returns false if the machine rejects it. */
     fun startCommitment(durationMillis: Long): Boolean {
+        if (protectedPackages().isEmpty()) return false
         val bootKnown = clock.currentBootId() != null
         val result = ProtectionMachine.reduce(
             state,
@@ -128,7 +130,7 @@ class ProtectionCoordinator(
         val action = ProtectionPolicy.decide(
             packageName,
             state,
-            protectedPackages,
+            protectedPackages(),
             ownPackage,
             lastRedirectMillis,
             now,

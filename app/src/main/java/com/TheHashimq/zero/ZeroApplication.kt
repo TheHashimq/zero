@@ -39,10 +39,7 @@ class ZeroApplication : Application() {
     val registry: ModuleRegistry = ModuleRegistry()
 
     /** Protection module. Its coordinator exists after startup. */
-    val protectionModule: ProtectionModule = ProtectionModule(
-        ownPackage = "com.TheHashimq.zero",
-        protectedPackages = setOf("com.android.settings"),
-    )
+    val protectionModule: ProtectionModule = ProtectionModule(ownPackage = "com.TheHashimq.zero")
 
     /** Services built in onCreate, read by the UI. */
     lateinit var services: ZeroServices

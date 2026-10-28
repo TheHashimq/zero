@@ -51,7 +51,7 @@ class ProtectionCoordinatorTest {
             EventBus(),
         )
 
-        fun coordinator() = ProtectionCoordinator(clock, store, events, source, OWN, setOf(SETTINGS))
+        fun coordinator() = ProtectionCoordinator(clock, store, events, source, OWN) { setOf(SETTINGS) }
 
         fun types(): List<String> = events.recent(50).map { it.type.value }.reversed()
     }
@@ -252,5 +252,28 @@ class ProtectionCoordinatorTest {
 
         assertEquals(ProtectionAction.RedirectHome, c.onForegroundChanged(SETTINGS))
         assertEquals(1, c.droppedEventCount)
+    }
+
+    /** A start is rejected when no packages are protected. */
+    @Test
+    fun startRejectedWhenNoProtectedApps() {
+        val f = Fixture()
+        val c = ProtectionCoordinator(f.clock, f.store, f.events, f.source, OWN) { emptySet() }
+
+        assertFalse(c.startCommitment(MINUTE))
+        assertEquals(ProtectionState.Armed, c.state())
+    }
+
+    /** A package added during a commitment is blocked immediately, without a restart. */
+    @Test
+    fun appAddedDuringCommitmentIsBlockedImmediately() {
+        val f = Fixture()
+        val protectedSet = mutableSetOf(SETTINGS)
+        val c = ProtectionCoordinator(f.clock, f.store, f.events, f.source, OWN) { protectedSet }
+        c.startCommitment(MINUTE)
+
+        protectedSet.add("com.example.notes")
+
+        assertEquals(ProtectionAction.RedirectHome, c.onForegroundChanged("com.example.notes"))
     }
 }
