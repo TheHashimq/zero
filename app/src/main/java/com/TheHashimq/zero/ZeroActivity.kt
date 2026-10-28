@@ -23,7 +23,12 @@ class ZeroActivity : ComponentActivity() {
         val app = application as ZeroApplication
         setContent {
             ZeroTheme {
-                ZeroShell(app.services.navigation, app.services.health, app.protectionModule)
+                ZeroShell(
+                    app.services.navigation,
+                    app.services.health,
+                    app.protectionModule,
+                    app.historyModule,
+                )
             }
         }
     }

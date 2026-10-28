@@ -2,8 +2,8 @@
  * MODULE: app (composition root)
  * PURPOSE: Builds foundation services, registers modules, freezes navigation, and logs health.
  * TAKES: Android Application lifecycle callbacks.
- * GIVES: The registry, services, protection module, and launch-time logs.
- * OWNS: The registry, services, and protection module references.
+ * GIVES: The registry, services, protection and history modules, and launch-time logs.
+ * OWNS: The registry, services, and feature module references.
  * DOES NOT OWN: Module behavior, UI rendering, or enforcement.
  * DEPENDENCIES: Foundation modules, feature-protection-runtime, and platform adapters.
  * CONTRACT: One registry and one services instance exist per process. Navigation is frozen after startup.
@@ -21,6 +21,7 @@ import com.TheHashimq.zero.platform.persistence.SharedPreferencesKeyValueBackend
 import com.TheHashimq.zero.platform.protection.AndroidAccessibilityEnabledProbe
 import zero.feature.protection.runtime.ProtectionAccessibilityHealthSource
 import zero.feature.protection.runtime.ProtectionModule
+import zero.feature.history.HistoryModule
 import zero.foundation.clock.DefaultZeroClock
 import zero.foundation.contract.ModuleId
 import zero.foundation.events.EventBus
@@ -40,6 +41,9 @@ class ZeroApplication : Application() {
 
     /** Protection module. Its coordinator exists after startup. */
     val protectionModule: ProtectionModule = ProtectionModule(ownPackage = "com.TheHashimq.zero")
+
+    /** Read-only event history. */
+    val historyModule: HistoryModule = HistoryModule()
 
     /** Services built in onCreate, read by the UI. */
     lateinit var services: ZeroServices
@@ -73,6 +77,7 @@ class ZeroApplication : Application() {
 
         services = ZeroServices(clock, stores, events, health, navigation)
         registry.register(protectionModule)
+        registry.register(historyModule)
         registry.startAll(services)
         navigation.freeze()
         FoundationSelfCheck.run(clock, stores)

@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.TheHashimq.zero.ui.history.HistoryScreen
 import com.TheHashimq.zero.ui.protection.ProtectionScreen
 import com.TheHashimq.zero.ui.protection.ProtectedAppsScreen
 import com.TheHashimq.zero.ui.main.MainScreen
@@ -44,6 +45,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zero.foundation.design.DesignTokens
 import zero.foundation.design.StatusRole
+import zero.feature.history.HistoryModule
 import zero.feature.protection.runtime.ProtectionModule
 import zero.foundation.health.HealthService
 import zero.foundation.health.HealthState
@@ -60,7 +62,12 @@ private sealed interface Screen {
 /** Root composable: drawer menu plus the selected screen. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZeroShell(navigation: NavigationRegistry, health: HealthService, protection: ProtectionModule) {
+fun ZeroShell(
+    navigation: NavigationRegistry,
+    health: HealthService,
+    protection: ProtectionModule,
+    history: HistoryModule,
+) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var screen by remember { mutableStateOf<Screen>(Screen.Main) }
@@ -138,6 +145,7 @@ fun ZeroShell(navigation: NavigationRegistry, health: HealthService, protection:
                     is Screen.Module -> when (current.id) {
                         "protection" -> ProtectionScreen(protection)
                         ProtectionModule.PROTECTED_APPS_ROUTE -> ProtectedAppsScreen(protection)
+                        "history" -> HistoryScreen(history)
                         else -> Text("Screen for '${current.id}' is not built yet")
                     }
                 }

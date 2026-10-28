@@ -45,6 +45,7 @@ dependencies {
     implementation(project(":foundation-navigation"))
     implementation(project(":foundation-design"))
     implementation(project(":feature-protection-runtime"))
+    implementation(project(":feature-history"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
