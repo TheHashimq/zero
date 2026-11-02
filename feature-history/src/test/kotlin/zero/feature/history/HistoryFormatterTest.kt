@@ -32,6 +32,13 @@ class HistoryFormatterTest {
         assertEquals("Blocked app opened", HistoryFormatter.titleFor("protection.blocked-open"))
     }
 
+    /** The self-protection event types have readable titles. */
+    @Test
+    fun selfProtectionTypesHaveTitles() {
+        assertEquals("Uninstall or Zero settings blocked", HistoryFormatter.titleFor("protection.self-blocked"))
+        assertEquals("Access ended early", HistoryFormatter.titleFor("protection.grace-ended-early"))
+    }
+
     /** Unknown types are shown under their raw name, never dropped. */
     @Test
     fun unknownTypeShowsRawName() {

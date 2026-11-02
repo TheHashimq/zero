@@ -44,6 +44,8 @@ object HistoryFormatter {
         "protection.blocked-open" -> "Blocked app opened"
         "protection.reboot-restart" -> "Restarted after reboot"
         "protection.state-corrupt" -> "Saved state was unreadable"
+        "protection.self-blocked" -> "Uninstall or Zero settings blocked"
+        "protection.grace-ended-early" -> "Access ended early"
         else -> type
     }
 

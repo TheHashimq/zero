@@ -10,6 +10,7 @@
  *           Protected packages and the minimum duration are read at each decision. Start is rejected when no app is protected
  *           or the requested duration is outside the minimum-to-maximum range.
  *           A Start is rejected without a known boot ID. A reboot during a countdown restarts it with full duration.
+ *           Uninstall and App info screens are blocked without a redirect guard; uninstalling Zero during Grace ends Grace at once.
  *           Event recording failures are counted in droppedEventCount and never block protection.
  * FAILURE BEHAVIOR: Store write failures throw PersistenceException from startCommitment, tick, onScreenOff,
  *                   and reconcileBoot. A corrupted stored state restores as Armed and records protection.state-corrupt.
@@ -22,6 +23,9 @@ import zero.feature.protection.ProtectionEvent
 import zero.feature.protection.ProtectionMachine
 import zero.feature.protection.ProtectionPolicy
 import zero.feature.protection.ProtectionState
+import zero.feature.protection.SelfDecision
+import zero.feature.protection.SelfProtectionPolicy
+import zero.feature.protection.SelfScreen
 import zero.foundation.clock.BootReconciler
 import zero.foundation.clock.BootState
 import zero.foundation.clock.ZeroClock
@@ -144,6 +148,25 @@ class ProtectionCoordinator(
             recordSafely("protection.blocked-open", mapOf("package" to packageName))
         }
         return action
+    }
+
+    /**
+     * Applies self-protection to an uninstall or Zero App info screen.
+     * Opening Zero's uninstall during grace ends the grace first, so protection is back before the redirect.
+     * If the write that ends grace fails, the grace stays and the redirect still happens.
+     */
+    fun onSelfScreen(screen: SelfScreen): ProtectionAction {
+        val decision = SelfProtectionPolicy.decide(screen, state)
+        if (decision == SelfDecision.Allow) return ProtectionAction.Allow
+        if (decision == SelfDecision.RedirectHomeAndEndGrace) {
+            try {
+                commit(ProtectionState.Armed, "protection.grace-ended-early")
+            } catch (failure: PersistenceException) {
+                // Grace stays in place. The redirect below still happens.
+            }
+        }
+        recordSafely("protection.self-blocked", mapOf("screen" to screen.name))
+        return ProtectionAction.RedirectHome
     }
 
     private fun commit(next: ProtectionState, eventType: String?) {

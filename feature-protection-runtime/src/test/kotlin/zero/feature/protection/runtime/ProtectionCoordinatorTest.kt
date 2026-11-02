@@ -20,6 +20,7 @@ import zero.feature.protection.ProtectionAction
 import zero.feature.protection.ProtectionConstants
 import zero.feature.protection.CooldownRules
 import zero.feature.protection.ProtectionState
+import zero.feature.protection.SelfScreen
 import zero.foundation.clock.BootState
 import zero.foundation.clock.DefaultZeroClock
 import zero.foundation.contract.ModuleId
@@ -255,6 +256,60 @@ class ProtectionCoordinatorTest {
 
         assertEquals(ProtectionAction.RedirectHome, c.onForegroundChanged(SETTINGS))
         assertEquals(1, c.droppedEventCount)
+    }
+
+    /** Uninstalling Zero during grace ends the grace at once and sends the user Home. */
+    @Test
+    fun uninstallZeroDuringGraceEndsGraceImmediately() {
+        val f = Fixture()
+        val c = f.coordinator()
+        c.startCommitment(MINUTE)
+        f.mono.setTo(1_000L + MINUTE)
+        c.tick()
+
+        assertEquals(ProtectionAction.RedirectHome, c.onSelfScreen(SelfScreen.UNINSTALL_ZERO))
+        assertEquals(ProtectionState.Armed, c.state())
+        assertTrue(f.types().contains("protection.grace-ended-early"))
+        assertTrue(f.types().contains("protection.self-blocked"))
+    }
+
+    /** Uninstalling another app during grace is allowed and leaves the grace running. */
+    @Test
+    fun uninstallOtherDuringGraceIsAllowedAndKeepsGrace() {
+        val f = Fixture()
+        val c = f.coordinator()
+        c.startCommitment(MINUTE)
+        f.mono.setTo(1_000L + MINUTE)
+        c.tick()
+
+        assertEquals(ProtectionAction.Allow, c.onSelfScreen(SelfScreen.UNINSTALL_OTHER))
+        assertTrue(c.state() is ProtectionState.Grace)
+    }
+
+    /** Uninstalling another app during a countdown is blocked and recorded with its screen type. */
+    @Test
+    fun uninstallOtherDuringCountdownIsBlockedAndRecorded() {
+        val f = Fixture()
+        val c = f.coordinator()
+        c.startCommitment(MINUTE)
+
+        assertEquals(ProtectionAction.RedirectHome, c.onSelfScreen(SelfScreen.UNINSTALL_OTHER))
+
+        val blocked = f.events.recent(10).first { it.type.value == "protection.self-blocked" }
+        assertEquals(mapOf("screen" to "UNINSTALL_OTHER"), blocked.payload)
+    }
+
+    /** Grace ended by an uninstall attempt stays ended after a restart. */
+    @Test
+    fun graceEndedEarlySurvivesRestart() {
+        val f = Fixture()
+        val c = f.coordinator()
+        c.startCommitment(MINUTE)
+        f.mono.setTo(1_000L + MINUTE)
+        c.tick()
+        c.onSelfScreen(SelfScreen.UNINSTALL_ZERO)
+
+        assertEquals(ProtectionState.Armed, f.coordinator().state())
     }
 
     /** A start is rejected when no packages are protected. */
