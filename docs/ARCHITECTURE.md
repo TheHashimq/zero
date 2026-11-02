@@ -67,6 +67,13 @@ Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the o
 - `ZeroApplication` is the composition root, starts the registry once per process, and freezes navigation after startup.
 - The protection service observes window-state package names only; it does not request window contents.
 
+## Self-protection and privacy
+
+- While protection is Armed or in a Countdown, every uninstall dialog is blocked, and Zero's App info page is blocked in every state.
+- During Grace, uninstalling other apps is allowed. Opening Zero's uninstall ends the Grace at once.
+- Window text is read only on installer and Settings windows, checked in memory, and never stored or logged.
+- Not covered: Safe Mode, adb uninstall, factory reset, and any uninstall path outside the system installer and Settings.
+
 ## Not yet built
 
 - Logging
