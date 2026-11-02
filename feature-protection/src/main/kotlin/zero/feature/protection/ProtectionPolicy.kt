@@ -6,8 +6,8 @@
  * OWNS: No state.
  * DOES NOT OWN: Recording redirect events or performing the redirect.
  * DEPENDENCIES: ProtectionState, ProtectionAction, ProtectionConstants.
- * CONTRACT: Our own package is always allowed. Only Countdown blocks.
- *           A redirect within the guard window is allowed to break loops.
+ * CONTRACT: Our own package is always allowed. Armed and Countdown block protected packages.
+ *           Grace allows every package. A redirect within the guard window is allowed to break loops.
  *           A last-redirect time later than now is treated as no recent redirect.
  * FAILURE BEHAVIOR: Never throws. Empty inputs produce Allow.
  */
@@ -25,7 +25,7 @@ object ProtectionPolicy {
         nowMillis: Long,
     ): ProtectionAction {
         if (foregroundPackage == ownPackage) return ProtectionAction.Allow
-        if (state !is ProtectionState.Countdown) return ProtectionAction.Allow
+        if (state is ProtectionState.Grace) return ProtectionAction.Allow
         if (foregroundPackage !in protectedPackages) return ProtectionAction.Allow
         if (isWithinGuard(lastRedirectMillis, nowMillis)) return ProtectionAction.Allow
         return ProtectionAction.RedirectHome

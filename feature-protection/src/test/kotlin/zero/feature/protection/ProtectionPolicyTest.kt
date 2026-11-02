@@ -34,10 +34,19 @@ class ProtectionPolicyTest {
         assertEquals(ProtectionAction.Allow, decide(pkg = own, protected = setOf(own)))
     }
 
-    /** Armed never blocks, even a protected app. */
+    /** Armed blocks protected apps, so they stay blocked until a wait ends. */
     @Test
-    fun armedAllowsProtectedApp() {
-        assertEquals(ProtectionAction.Allow, decide(state = ProtectionState.Armed))
+    fun armedRedirectsProtectedApp() {
+        assertEquals(ProtectionAction.RedirectHome, decide(state = ProtectionState.Armed))
+    }
+
+    /** Armed allows apps that are not protected. */
+    @Test
+    fun armedAllowsUnprotectedApp() {
+        assertEquals(
+            ProtectionAction.Allow,
+            decide(state = ProtectionState.Armed, pkg = "com.example.notes", protected = setOf(social)),
+        )
     }
 
     /** Grace never blocks, even a protected app. */
