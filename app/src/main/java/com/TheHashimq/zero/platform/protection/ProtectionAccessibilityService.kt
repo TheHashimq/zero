@@ -1,12 +1,13 @@
 /*
  * MODULE: app (accessibility adapter for protection)
- * PURPOSE: Reports foreground app changes to the protection coordinator and sends the user Home when told to.
- * TAKES: Window-state accessibility events, screen-off broadcasts, and a periodic tick.
+ * PURPOSE: Reports foreground changes and self-protection screens to the coordinator, and sends the user Home when told to.
+ * TAKES: Window-state events, screen-off broadcasts, and a periodic tick. Reads window text only on installer and Settings windows.
  * GIVES: Global Home action when the coordinator returns RedirectHome.
  * OWNS: The screen-off receiver and the tick handler. No protection state.
  * DOES NOT OWN: Protection decisions, persistence, or events.
- * DEPENDENCIES: feature-protection-runtime, ZeroApplication, Android accessibility APIs.
- * CONTRACT: Reads package names only; window content is not requested. Sends Home only on RedirectHome.
+ * DEPENDENCIES: feature-protection-runtime, feature-protection, ZeroApplication, Android accessibility APIs.
+ * CONTRACT: Text is read only on installer and Settings windows, checked in memory, and never stored or logged.
+ *           Sends Home only on RedirectHome.
  * FAILURE BEHAVIOR: Persistence failures on tick or screen-off are logged and retried on the next tick.
  *                   A missing coordinator means no action.
  */
@@ -21,9 +22,12 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.content.ContextCompat
 import com.TheHashimq.zero.ZeroApplication
 import zero.feature.protection.ProtectionAction
+import zero.feature.protection.SelfScreen
+import zero.feature.protection.SelfScreenClassifier
 import zero.feature.protection.runtime.ProtectionCoordinator
 import zero.foundation.persistence.PersistenceException
 
@@ -67,6 +71,16 @@ class ProtectionAccessibilityService : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val packageName = event.packageName?.toString() ?: return
         val c = coordinator() ?: return
+
+        val texts = if (SelfScreenClassifier.readsContentFor(packageName)) readTexts() else emptyList()
+        val screen = SelfScreenClassifier.classify(packageName, texts, SELF_LABEL)
+        if (screen != SelfScreen.NONE) {
+            if (c.onSelfScreen(screen) == ProtectionAction.RedirectHome) {
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
+            return
+        }
+
         if (c.onForegroundChanged(packageName) == ProtectionAction.RedirectHome) {
             performGlobalAction(GLOBAL_ACTION_HOME)
         }
@@ -93,6 +107,32 @@ class ProtectionAccessibilityService : AccessibilityService() {
         }
     }
 
+    /** Collects visible text from the active window. The result is only used for classification. */
+    private fun readTexts(): List<String> {
+        val root = rootInActiveWindow ?: return emptyList()
+        return try {
+            val out = mutableListOf<String>()
+            collectTexts(root, out)
+            out
+        } finally {
+            @Suppress("DEPRECATION")
+            root.recycle()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun collectTexts(node: AccessibilityNodeInfo, out: MutableList<String>) {
+        node.text?.let { out.add(it.toString()) }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            try {
+                collectTexts(child, out)
+            } finally {
+                child.recycle()
+            }
+        }
+    }
+
     private fun coordinator(): ProtectionCoordinator? =
         (application as ZeroApplication).protectionModule.coordinator
 
@@ -107,5 +147,6 @@ class ProtectionAccessibilityService : AccessibilityService() {
     private companion object {
         const val TAG = "ZeroProtection"
         const val TICK_MILLIS = 1_000L
+        const val SELF_LABEL = "Zero"
     }
 }
