@@ -21,6 +21,8 @@
   zero.foundation.navigation
 :foundation-design
   zero.foundation.design
+:feature-streaks
+  zero.feature.streaks
 :feature-protection
   zero.feature.protection
 :feature-protection-runtime
@@ -43,6 +45,7 @@
 | `feature-protection` | Pure protection state machine, foreground decision policy, one-way commitment minimum rules, and timer formatting. | Phase 8a-11c: done |
 | `feature-protection-runtime` | Persists protection state, the add-only protected-app list, and the commitment minimum; coordinates events and health and registers navigation. | Phase 8b-10b: done |
 | `feature-history` | Read-only event history navigation and pure grouping/date/time formatting for recorded events. | Phase 12a: done |
+| `feature-streaks` | Pure daily/weekly/monthly/yearly streak engine with checklist, amount, limit, and check-in logic plus palette selection. | Phase 16: done |
 | `foundation-testing` | Supplies fake modules, clock sources, storage backends, and event test support. | Phase 1-7: done |
 
 Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the old accessibility health probe removed. The app launches to the Zero shell; users select launchable apps to protect.

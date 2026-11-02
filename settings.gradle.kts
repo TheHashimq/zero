@@ -37,4 +37,5 @@ include(":foundation-design")
 include(":feature-protection")
 include(":feature-protection-runtime")
 include(":feature-history")
+include(":feature-streaks")
  
