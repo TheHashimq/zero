@@ -126,7 +126,12 @@ fun ProtectedAppsScreen(module: ProtectionModule) {
             text = {
                 Text(
                     "Once added, ${app.label} cannot be removed from Zero. " +
-                        "It will be blocked during every commitment.",
+                        "It will be blocked until a wait ends, then open for 3 minutes." +
+                        if (app.packageName == "com.android.settings") {
+                            " Blocking Settings also blocks turning off Zero's accessibility service until an access window opens."
+                        } else {
+                            ""
+                        },
                 )
             },
             confirmButton = {

@@ -116,7 +116,7 @@ fun MainScreen(module: ProtectionModule, onOpenProtectedApps: () -> Unit) {
                 }
                 protectedCount == 0 -> PrimaryButton("Choose apps to protect", onClick = onOpenProtectedApps)
                 state == ProtectionState.Armed -> PrimaryButton(
-                    "Start ${minimum / MINUTE_MILLIS} min commitment",
+                    "Wait ${minimum / MINUTE_MILLIS} min for 3 min access",
                 ) {
                     message = try {
                         if (coordinator.startCommitment(minimum)) null else "Cannot start right now."
@@ -145,8 +145,8 @@ private fun timerText(state: ProtectionState, now: Long): String = when (state) 
 
 private fun subtitle(state: ProtectionState, protectedCount: Int): String = when (state) {
     ProtectionState.Armed ->
-        if (protectedCount == 0) "Nothing is blocked yet."
-        else "$protectedCount app(s) protected. Nothing is blocked until you start."
-    is ProtectionState.Countdown -> "Protected apps are blocked until the timer ends."
-    is ProtectionState.Grace -> "Apps are open during the grace period, then protection resumes."
+        if (protectedCount == 0) "Nothing is protected yet."
+        else "$protectedCount app(s) blocked. Start a wait to get 3 minutes of access."
+    is ProtectionState.Countdown -> "Protected apps stay blocked until the wait ends."
+    is ProtectionState.Grace -> "Protected apps are open for 3 minutes, then blocked again."
 }

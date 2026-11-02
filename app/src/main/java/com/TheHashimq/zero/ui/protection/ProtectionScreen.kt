@@ -142,7 +142,7 @@ fun ProtectionScreen(module: ProtectionModule) {
         }
 
         PrimaryButton(
-            text = "Start ${minimum / MINUTE_MILLIS} min commitment",
+            text = "Wait ${minimum / MINUTE_MILLIS} min for 3 min access",
             enabled = canStart,
         ) {
             message = try {
@@ -180,7 +180,7 @@ private fun raiseMessage(result: RaiseResult): String = when (result) {
 }
 
 private fun describe(state: ProtectionState, now: Long): String = when (state) {
-    ProtectionState.Armed -> "State: Armed (nothing blocked)"
+    ProtectionState.Armed -> "State: Armed (protected apps blocked)"
     is ProtectionState.Countdown -> "State: Committed, ${TimeFormat.remaining(state.endsAtMillis - now)} left"
     is ProtectionState.Grace -> "State: Grace, ${TimeFormat.remaining(state.endsAtMillis - now)} left"
 }

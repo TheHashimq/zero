@@ -83,7 +83,8 @@ Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the o
 
 ## Protection limits
 
-- A user can turn off the accessibility service when no commitment is running.
+- Armed and Countdown block protected apps. Grace allows them for 3 minutes. The wait before access is the committed minimum.
+- Protecting Settings blocks access to Zero's accessibility service settings until an access window opens.
 - A protected app may flicker briefly before the redirect.
 - Protection depends on the accessibility service being connected. If it disconnects, nothing is blocked, and Diagnostics shows `DEGRADED`.
 - The protected-app list is persistent and add-only. Malformed stored entries are ignored; there is no removal or clearing UI.
