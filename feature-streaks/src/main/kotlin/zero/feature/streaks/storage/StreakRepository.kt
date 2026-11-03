@@ -135,6 +135,17 @@ class StreakRepository private constructor(
         commit(streaks.map { if (it.id == streakId) updated else it })
     }
 
+    /**
+     * Imports a streak with its entries, keeping the given entry IDs so re-import is a no-op.
+     * Returns false, and changes nothing, if a streak with the same ID already exists.
+     */
+    fun importStreak(def: StreakDefinition, order: Int, entries: List<Pair<String, Entry>>): Boolean {
+        if (streaks.any { it.id == def.id }) return false
+        val stored = def.toStored(order = order, entries = entries.map { (id, entry) -> storedEntryFrom(id, entry) })
+        commit(streaks + stored)
+        return true
+    }
+
     private fun find(streakId: String): StoredStreak =
         streaks.firstOrNull { it.id == streakId } ?: throw IllegalArgumentException("unknown streak $streakId")
 
