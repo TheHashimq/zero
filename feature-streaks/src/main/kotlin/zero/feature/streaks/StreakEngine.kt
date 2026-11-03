@@ -30,7 +30,7 @@ object StreakEngine {
         val validEntries = entries
             .filter { it.date <= today }
             .filter { !it.date.isBefore(definition.createdOn) }
-            .onEach { validate(definition, it) }
+            .filter { entry -> runCatching { validate(definition, entry) }.isSuccess }
 
         val periods = generatePeriods(definition, definition.createdOn, today)
             .map { periodStart ->
@@ -90,9 +90,9 @@ object StreakEngine {
                 val strengthValue = (value.toDouble() / target).coerceAtMost(1.0)
                 when {
                     value > target -> PeriodStatus.MISSED to strengthValue
-                    value == target -> PeriodStatus.MET to strengthValue
+                    entries.isEmpty() && !isCurrentPeriod -> PeriodStatus.MISSED to strengthValue
                     isCurrentPeriod -> PeriodStatus.OPEN to strengthValue
-                    else -> PeriodStatus.MISSED to strengthValue
+                    else -> PeriodStatus.MET to strengthValue
                 }
             }
             StreakMode.CHECK_IN -> {
@@ -107,11 +107,12 @@ object StreakEngine {
             StreakMode.CHECKLIST -> {
                 val totalWeight = definition.parts.sumOf { it.weight }
                 val maxWeight = definition.parts.maxOf { it.weight }
-                val requiredWeight = definition.parts.filter { it.weight == maxWeight }.sumOf { it.weight }
+                val requiredNames = definition.parts.filter { it.weight == maxWeight }.map { it.name.trim() }
+                val checkedNames = entries.flatMap { it.parts }.map { it.trim() }.toSet()
                 val achievedWeight = value
                 val strengthValue = (achievedWeight.toDouble() / totalWeight.coerceAtLeast(1)).coerceAtMost(1.0)
                 when {
-                    achievedWeight >= requiredWeight -> PeriodStatus.MET to strengthValue
+                    requiredNames.all { it in checkedNames } -> PeriodStatus.MET to strengthValue
                     isCurrentPeriod -> PeriodStatus.OPEN to strengthValue
                     else -> PeriodStatus.MISSED to strengthValue
                 }

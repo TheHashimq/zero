@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="zero.feature.streaks.LimitRulesTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-03T03:13:10.905Z" hostname="HASHIMS-WINDOWS" time="0.002">
+  <properties/>
+  <testcase name="exceedingLimitIsMissedEvenToday" classname="zero.feature.streaks.LimitRulesTest" time="0.0"/>
+  <testcase name="unloggedPastDayIsMissed" classname="zero.feature.streaks.LimitRulesTest" time="0.0"/>
+  <testcase name="withinLimitPastDayIsMet" classname="zero.feature.streaks.LimitRulesTest" time="0.0"/>
+  <testcase name="unloggedTodayIsOpen" classname="zero.feature.streaks.LimitRulesTest" time="0.0"/>
+  <testcase name="withinLimitTodayIsOpen" classname="zero.feature.streaks.LimitRulesTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

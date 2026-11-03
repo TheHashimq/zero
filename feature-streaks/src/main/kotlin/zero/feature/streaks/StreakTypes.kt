@@ -4,10 +4,10 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 
 enum class StreakMode {
-    CHECKLIST,
+    CHECK_IN,
     AMOUNT,
     LIMIT,
-    CHECK_IN,
+    CHECKLIST,
 }
 
 enum class Frequency {

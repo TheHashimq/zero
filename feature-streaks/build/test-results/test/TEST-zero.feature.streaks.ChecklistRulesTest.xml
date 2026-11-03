@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="zero.feature.streaks.ChecklistRulesTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-03T03:13:10.879Z" hostname="HASHIMS-WINDOWS" time="0.016">
+  <properties/>
+  <testcase name="bothPartsGiveFullStrength" classname="zero.feature.streaks.ChecklistRulesTest" time="0.002"/>
+  <testcase name="sunnahOnlyFailsWithQuarterStrength" classname="zero.feature.streaks.ChecklistRulesTest" time="0.0"/>
+  <testcase name="partsFromSeparateLogsMerge" classname="zero.feature.streaks.ChecklistRulesTest" time="0.001"/>
+  <testcase name="tiedTopWeightsAreAllRequired" classname="zero.feature.streaks.ChecklistRulesTest" time="0.0"/>
+  <testcase name="unknownPartIsRejected" classname="zero.feature.streaks.ChecklistRulesTest" time="0.012"/>
+  <testcase name="fardOnlyPassesWithThreeQuarterStrength" classname="zero.feature.streaks.ChecklistRulesTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

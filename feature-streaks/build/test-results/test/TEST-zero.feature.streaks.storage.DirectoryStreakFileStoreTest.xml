@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="zero.feature.streaks.storage.DirectoryStreakFileStoreTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-03T03:13:10.945Z" hostname="HASHIMS-WINDOWS" time="0.014">
+  <properties/>
+  <testcase name="writeLeavesNoTempFile" classname="zero.feature.streaks.storage.DirectoryStreakFileStoreTest" time="0.006"/>
+  <testcase name="writeThenRead" classname="zero.feature.streaks.storage.DirectoryStreakFileStoreTest" time="0.003"/>
+  <testcase name="moveToCorruptRemovesActiveFile" classname="zero.feature.streaks.storage.DirectoryStreakFileStoreTest" time="0.002"/>
+  <testcase name="missingFileReadsNull" classname="zero.feature.streaks.storage.DirectoryStreakFileStoreTest" time="0.0"/>
+  <testcase name="writeReplacesExisting" classname="zero.feature.streaks.storage.DirectoryStreakFileStoreTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
