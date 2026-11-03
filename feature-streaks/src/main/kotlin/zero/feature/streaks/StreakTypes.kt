@@ -77,6 +77,7 @@ data class Entry(
     val date: LocalDate,
     val amount: Int = 0,
     val parts: Set<String> = emptySet(),
+    val context: String? = null,
 ) {
     init {
         require(amount >= 0) { "Entry amount must not be negative." }
