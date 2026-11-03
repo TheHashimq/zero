@@ -121,8 +121,25 @@ class AgainImportTest {
     fun missingColorDefaultsToNearestPaletteColor() {
         val s = parse(wrap(streak(color = null))).streaks.single()
 
-        assertEquals(2, s.definition.colorIndex)
-        assertEquals(2, AgainImporter.nearestPaletteIndex("#FF9900"))
+        assertEquals(0, s.definition.colorIndex)
+        assertEquals(0, AgainImporter.nearestPaletteIndex("#FF9900"))
+    }
+
+    /** The palette is the approved Again neon set, not a drifted alternative. */
+    @Test
+    fun approvedNeonPaletteIsLocked() {
+        assertEquals(
+            listOf(
+                0xFFF0F01B.toInt(),
+                0xFFB1E80D.toInt(),
+                0xFFA3D8FF.toInt(),
+                0xFF0065F8.toInt(),
+                0xFFFF2DF1.toInt(),
+                0xFFF93827.toInt(),
+                0xFFFF55BB.toInt(),
+            ),
+            StreakPalette.COLORS,
+        )
     }
 
     /** A missing position defaults to zero. */

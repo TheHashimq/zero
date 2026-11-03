@@ -7,13 +7,13 @@ object StreakPalette {
     const val SIZE: Int = 7
 
     val COLORS: List<Int> = listOf(
-        0xFF5DD4FF.toInt(),
-        0xFF34D399.toInt(),
-        0xFFFFB454.toInt(),
-        0xFFFF6B8F.toInt(),
-        0xFF9F7AEA.toInt(),
-        0xFF7EE787.toInt(),
-        0xFFFFD166.toInt(),
+        0xFFF0F01B.toInt(),
+        0xFFB1E80D.toInt(),
+        0xFFA3D8FF.toInt(),
+        0xFF0065F8.toInt(),
+        0xFFFF2DF1.toInt(),
+        0xFFF93827.toInt(),
+        0xFFFF55BB.toInt(),
     )
 
     fun pickIndex(used: List<Int>, random: Random): Int {
