@@ -15,3 +15,6 @@
 local.properties
 .idea/
 keystore.properties
+
+# Module build outputs
+**/build/
