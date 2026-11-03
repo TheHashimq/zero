@@ -18,6 +18,7 @@ import com.TheHashimq.zero.platform.clock.AndroidMonotonicSource
 import com.TheHashimq.zero.platform.clock.AndroidWallClockSource
 import com.TheHashimq.zero.platform.persistence.SharedPreferencesKeyValueBackend
 import com.TheHashimq.zero.platform.protection.AndroidAccessibilityEnabledProbe
+import com.TheHashimq.zero.platform.streaks.StreakStore
 import zero.feature.protection.runtime.ProtectionAccessibilityHealthSource
 import zero.feature.protection.runtime.ProtectionModule
 import zero.feature.history.HistoryModule
@@ -43,6 +44,9 @@ class ZeroApplication : Application() {
 
     /** Read-only event history. */
     val historyModule: HistoryModule = HistoryModule()
+
+    /** Streak storage. Opened lazily, after the application context exists. */
+    val streaks: StreakStore by lazy { StreakStore(filesDir) }
 
     /** Services built in onCreate, read by the UI. */
     lateinit var services: ZeroServices
