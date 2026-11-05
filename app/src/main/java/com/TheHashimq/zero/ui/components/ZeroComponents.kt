@@ -43,11 +43,16 @@ fun StatusLine(text: String, color: Color) {
 
 /** Full-width primary action. */
 @Composable
-fun PrimaryButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+fun PrimaryButton(
+    text: String,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    onClick: () -> Unit,
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
     ) {
         Text(text)
     }

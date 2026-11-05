@@ -11,6 +11,10 @@
  */
 package com.TheHashimq.zero.ui.streaks
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,10 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,17 +45,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.TheHashimq.zero.platform.streaks.StreakStore
 import com.TheHashimq.zero.ui.components.PrimaryButton
+import com.TheHashimq.zero.ui.components.SecondaryButton
 import com.TheHashimq.zero.ui.components.SectionLabel
 import com.TheHashimq.zero.ui.components.StatusLine
+import java.io.IOException
+import java.time.LocalDate
 import zero.feature.streaks.PeriodStatus
 import zero.feature.streaks.StreakDefinition
 import zero.feature.streaks.StreakPalette
 import zero.feature.streaks.presentation.Progress
 import zero.feature.streaks.presentation.StreakCard
 import zero.feature.streaks.presentation.StreakCards
+import zero.feature.streaks.importexport.AgainImporter
 import zero.foundation.design.DesignTokens
 
 @Composable
@@ -55,6 +68,23 @@ fun StreakHomeScreen(store: StreakStore) {
     var editing by remember { mutableStateOf<StreakDefinition?>(null) }
     var creating by remember { mutableStateOf(false) }
     var viewing by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var importText by remember { mutableStateOf<String?>(null) }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) importText = runImport(context, store, uri)
+    }
+    importText?.let { text ->
+        AlertDialog(
+            onDismissRequest = { importText = null },
+            title = { Text("Import from Again") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(text)
+                }
+            },
+            confirmButton = { TextButton(onClick = { importText = null }) { Text("OK") } },
+        )
+    }
     if (creating || editing != null) {
         StreakFormScreen(store, editing) {
             creating = false
@@ -98,7 +128,16 @@ fun StreakHomeScreen(store: StreakStore) {
         ) {
             items(cards, key = { it.id }) { card -> StreakCardView(card) { viewing = card.id } }
         }
-        PrimaryButton("Add a streak") { creating = true }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            PrimaryButton("Add a streak", modifier = Modifier.weight(1f)) { creating = true }
+            SecondaryButton(
+                "Import from Again",
+                modifier = Modifier.weight(1f),
+            ) { importLauncher.launch(arrayOf("application/json", "*/*")) }
+        }
     }
 }
 
@@ -186,4 +225,21 @@ private fun statusColor(status: PeriodStatus): Color = when (status) {
     PeriodStatus.MET -> Color(DesignTokens.HEALTHY)
     PeriodStatus.OPEN -> Color(DesignTokens.TEXT_SECONDARY)
     PeriodStatus.MISSED -> Color(DesignTokens.CRITICAL)
+}
+
+/** Reads the picked file and imports it. Returns the text to show the user. */
+private fun runImport(context: Context, store: StreakStore, uri: Uri): String {
+    val text = try {
+        context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+            ?: return "Could not open the file."
+    } catch (failure: IOException) {
+        return "Could not read the file: ${failure.message}"
+    } catch (failure: SecurityException) {
+        return "Could not read the file: ${failure.message}"
+    }
+    val result = store.update { repo -> AgainImporter.importInto(repo, text, LocalDate.now()) }
+    return result.fold(
+        onSuccess = { AgainImporter.describe(it) },
+        onFailure = { "Import failed: ${it.message}" },
+    )
 }

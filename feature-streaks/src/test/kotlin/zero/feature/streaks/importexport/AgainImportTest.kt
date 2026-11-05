@@ -229,4 +229,20 @@ class AgainImportTest {
 
         assertTrue(index in 0 until StreakPalette.SIZE)
     }
+
+    /** The summary reports the count, using the singular for one. */
+    @Test
+    fun describeReportsAddedCount() {
+        assertEquals("Added 1 streak.", AgainImporter.describe(ImportSummary(1, emptyList())))
+        assertEquals("Added 3 streaks.", AgainImporter.describe(ImportSummary(3, emptyList())))
+    }
+
+    /** Skipped items are listed under the count with their reasons. */
+    @Test
+    fun describeListsSkippedReasons() {
+        val text = AgainImporter.describe(ImportSummary(0, listOf("Reading: already imported")))
+
+        assertTrue(text.startsWith("Added 0 streaks."))
+        assertTrue(text.contains("• Reading: already imported"))
+    }
 }

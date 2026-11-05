@@ -133,6 +133,13 @@ object AgainImporter {
         return ImportSummary(added, report.skipped)
     }
 
+    /** The text shown after an import: the count added, and each skipped item with its reason. */
+    fun describe(summary: ImportSummary): String {
+        val head = if (summary.added == 1) "Added 1 streak." else "Added ${summary.added} streaks."
+        if (summary.skipped.isEmpty()) return head
+        return head + "\n\nSkipped:\n" + summary.skipped.joinToString("\n") { "• $it" }
+    }
+
     private fun map(dto: AgainStreak, weekStart: DayOfWeek, today: LocalDate, notes: MutableList<String>): ImportedStreak {
         val frequency = try {
             Frequency.valueOf(dto.frequency)
