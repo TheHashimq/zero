@@ -1,13 +1,13 @@
 /*
  * MODULE: app (streaks home screen)
- * PURPOSE: Shows every streak and routes to add, edit, and details screens.
- * TAKES: The StreakStore from ZeroApplication.
- * GIVES: A Compose list that refreshes when the store changes or the date changes.
- * OWNS: Only the displayed notice.
+ * PURPOSE: Shows every streak as a clean row: emoji, name, ongoing status, and a round check for today.
+ * TAKES: The StreakStore from ZeroApplication, and callbacks for opening a streak and adding one.
+ * GIVES: A reorderable list. The check logs or removes today's check-in for check-in streaks; other rows open details.
+ * OWNS: The import dialog, the More menu, and the message line.
  * DOES NOT OWN: Streak rules or storage. Those live in feature-streaks.
- * DEPENDENCIES: feature-streaks, foundation-design, Compose Material3, shared components.
- * CONTRACT: Home cards open the streak details; add and edit use the streak form.
- * FAILURE BEHAVIOR: A load error is shown as a message. Nothing crashes if storage is unavailable.
+ * DEPENDENCIES: feature-streaks, foundation-design, Compose Material3, reorderable, shared components.
+ * CONTRACT: Every change goes through StreakStore.update. Rows show no progress detail; that lives in the details screen.
+ * FAILURE BEHAVIOR: Load and save errors are shown as messages. Nothing crashes if storage is unavailable.
  */
 package com.TheHashimq.zero.ui.streaks
 
@@ -16,15 +16,14 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,28 +45,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.TheHashimq.zero.platform.streaks.StreakStore
 import com.TheHashimq.zero.ui.components.PrimaryButton
 import com.TheHashimq.zero.ui.components.SectionLabel
 import com.TheHashimq.zero.ui.components.StatusLine
 import java.io.IOException
 import java.time.LocalDate
-import zero.feature.streaks.PeriodStatus
-import zero.feature.streaks.StreakPalette
-import zero.feature.streaks.presentation.Progress
-import zero.feature.streaks.presentation.StreakCard
-import zero.feature.streaks.presentation.StreakCards
-import zero.feature.streaks.importexport.AgainImporter
-import zero.foundation.design.DesignTokens
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import zero.feature.streaks.Entry
+import zero.feature.streaks.PeriodStatus
+import zero.feature.streaks.StreakMode
+import zero.feature.streaks.StreakPalette
+import zero.feature.streaks.importexport.AgainImporter
+import zero.feature.streaks.presentation.StreakCard
+import zero.feature.streaks.presentation.StreakCards
+import zero.foundation.design.DesignTokens
 
 @Composable
 fun StreakHomeScreen(
@@ -78,6 +80,7 @@ fun StreakHomeScreen(
     val context = LocalContext.current
     var importText by remember { mutableStateOf<String?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) importText = runImport(context, store, uri)
     }
@@ -93,24 +96,43 @@ fun StreakHomeScreen(
             confirmButton = { TextButton(onClick = { importText = null }) { Text("OK") } },
         )
     }
+
     val today = store.today()
     val cards = store.read { repo ->
         repo.definitions().map { definition ->
             StreakCards.build(definition, repo.summary(definition.id, today))
         }
     }.orEmpty()
+    val modes = store.read { repo -> repo.definitions().associate { it.id to it.mode } }.orEmpty()
     val loadError = store.loadError
     val listState = rememberLazyListState()
     var ordered by remember(cards) { mutableStateOf(cards) }
-    var reorderError by remember { mutableStateOf<String?>(null) }
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
         val moved = ordered.toMutableList().apply { add(to.index, removeAt(from.index)) }
         val result = store.update { repo -> repo.reorder(moved.map { it.id }) }
         if (result.isSuccess) {
             ordered = moved
-            reorderError = null
+            message = null
         } else {
-            reorderError = result.exceptionOrNull()?.message ?: "Could not save the streak order."
+            message = result.exceptionOrNull()?.message ?: "Could not save the streak order."
+        }
+    }
+
+    fun toggleToday(card: StreakCard) {
+        if (modes[card.id] != StreakMode.CHECK_IN) {
+            onOpen(card.id)
+            return
+        }
+        if (card.status == PeriodStatus.MET) {
+            val last = store.read { repo ->
+                repo.identifiedEntries(card.id).lastOrNull { it.entry.date == today }
+            }
+            if (last != null) {
+                message = store.update { repo -> repo.deleteEntry(card.id, last.id) }.exceptionOrNull()?.message
+            }
+        } else {
+            message = store.update { repo -> repo.addEntry(card.id, Entry(today), today) }
+                .exceptionOrNull()?.message
         }
     }
 
@@ -137,7 +159,7 @@ fun StreakHomeScreen(
             }
         }
         loadError?.let { StatusLine(it, Color(DesignTokens.WARNING)) }
-        reorderError?.let { StatusLine(it, Color(DesignTokens.CRITICAL)) }
+        message?.let { StatusLine(it, Color(DesignTokens.CRITICAL)) }
         if (cards.isEmpty() && loadError == null) {
             StatusLine("No streaks yet.", MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -148,11 +170,12 @@ fun StreakHomeScreen(
         ) {
             items(ordered, key = { it.id }) { card ->
                 ReorderableItem(reorderState, key = card.id) { isDragging ->
-                    StreakCardView(
+                    StreakRow(
                         card = card,
                         dragging = isDragging,
                         dragHandle = Modifier.longPressDraggableHandle(),
-                        onClick = { onOpen(card.id) },
+                        onOpen = { onOpen(card.id) },
+                        onCheck = { toggleToday(card) },
                     )
                 }
             }
@@ -162,107 +185,80 @@ fun StreakHomeScreen(
 }
 
 @Composable
-private fun StreakCardView(
+private fun StreakRow(
     card: StreakCard,
     dragging: Boolean,
     dragHandle: Modifier,
-    onClick: () -> Unit,
+    onOpen: () -> Unit,
+    onCheck: () -> Unit,
 ) {
     val accent = Color(StreakPalette.COLORS[card.colorIndex])
-    Column(
+    val done = card.status == PeriodStatus.MET
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(if (dragging) 12.dp else 0.dp, RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(accent),
-                )
-                Text(
-                    text = "${card.emoji}  ${card.name}",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Text(
-                text = "⋮⋮",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = dragHandle.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
-        StatusLine(card.summaryText, MaterialTheme.colorScheme.onSurfaceVariant)
-        ProgressView(card.progress, accent)
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            StatusLine("Current ${card.current}", MaterialTheme.colorScheme.onSurface)
-            StatusLine("Best ${card.best}", MaterialTheme.colorScheme.onSurfaceVariant)
-            StatusLine(statusText(card.status), statusColor(card.status))
-        }
-    }
-}
-
-@Composable
-private fun ProgressView(progress: Progress, accent: Color) {
-    when (progress) {
-        is Progress.Dots -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            repeat(progress.total) { index ->
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(if (index < progress.filled) accent else MaterialTheme.colorScheme.outline),
-                )
-            }
-        }
-        is Progress.Bar -> {
-            val fraction = (progress.value.toFloat() / progress.target).coerceIn(0f, 1f)
-            val color = if (progress.over) Color(DesignTokens.CRITICAL) else accent
-            BarTrack(fraction, color)
-        }
-        is Progress.Percent -> BarTrack(progress.percent / 100f, accent)
-    }
-}
-
-@Composable
-private fun BarTrack(fraction: Float, color: Color) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(8.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.outline),
+            .shadow(if (dragging) 10.dp else 0.dp, RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(dragHandle)
+            .clickable(onClick = onOpen)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(fraction)
-                .fillMaxHeight()
-                .background(color),
-        )
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(accent.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = card.emoji, fontSize = 22.sp)
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = card.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = ongoingText(card.current),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        CheckCircle(done = done, accent = accent, onClick = onCheck)
     }
 }
 
-private fun statusText(status: PeriodStatus): String = when (status) {
-    PeriodStatus.MET -> "Met"
-    PeriodStatus.OPEN -> "In progress"
-    PeriodStatus.MISSED -> "Missed"
+@Composable
+private fun CheckCircle(done: Boolean, accent: Color, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(if (done) accent else Color.Transparent)
+            .border(2.dp, if (done) accent else MaterialTheme.colorScheme.outline, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (done) {
+            Text(
+                text = "✓",
+                color = Color(DesignTokens.BACKGROUND),
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
 }
 
-private fun statusColor(status: PeriodStatus): Color = when (status) {
-    PeriodStatus.MET -> Color(DesignTokens.HEALTHY)
-    PeriodStatus.OPEN -> Color(DesignTokens.TEXT_SECONDARY)
-    PeriodStatus.MISSED -> Color(DesignTokens.CRITICAL)
+private fun ongoingText(current: Int): String = when {
+    current <= 0 -> "No ongoing streak"
+    current == 1 -> "1 day"
+    else -> "$current days"
 }
 
 /** Reads the picked file and imports it. Returns the text to show the user. */
