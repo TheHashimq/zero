@@ -12,6 +12,7 @@
 package com.TheHashimq.zero.ui.streaks
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ import com.TheHashimq.zero.ui.components.PrimaryButton
 import com.TheHashimq.zero.ui.components.SectionLabel
 import com.TheHashimq.zero.ui.components.StatusLine
 import zero.feature.streaks.PeriodStatus
+import zero.feature.streaks.StreakDefinition
 import zero.feature.streaks.StreakPalette
 import zero.feature.streaks.presentation.Progress
 import zero.feature.streaks.presentation.StreakCard
@@ -50,8 +52,17 @@ import zero.foundation.design.DesignTokens
 
 @Composable
 fun StreakHomeScreen(store: StreakStore) {
+    var editing by remember { mutableStateOf<StreakDefinition?>(null) }
+    var creating by remember { mutableStateOf(false) }
+    if (creating || editing != null) {
+        StreakFormScreen(store, editing) {
+            creating = false
+            editing = null
+        }
+        return
+    }
+
     val today = store.today()
-    var notice by remember { mutableStateOf<String?>(null) }
     val cards = store.read { repo ->
         repo.definitions().map { definition ->
             StreakCards.build(definition, repo.summary(definition.id, today))
@@ -72,21 +83,23 @@ fun StreakHomeScreen(store: StreakStore) {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(cards, key = { it.id }) { card -> StreakCardView(card) }
+            items(cards, key = { it.id }) { card ->
+                StreakCardView(card) {
+                    editing = store.read { repo -> repo.definitions().firstOrNull { it.id == card.id } }
+                }
+            }
         }
-        notice?.let { StatusLine(it, MaterialTheme.colorScheme.onSurfaceVariant) }
-        PrimaryButton("Add a streak") {
-            notice = "Adding streaks arrives in the next step."
-        }
+        PrimaryButton("Add a streak") { creating = true }
     }
 }
 
 @Composable
-private fun StreakCardView(card: StreakCard) {
+private fun StreakCardView(card: StreakCard, onClick: () -> Unit) {
     val accent = Color(StreakPalette.COLORS[card.colorIndex])
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
