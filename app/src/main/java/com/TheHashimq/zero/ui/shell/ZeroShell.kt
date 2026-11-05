@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.TheHashimq.zero.platform.streaks.StreakStore
 import com.TheHashimq.zero.ui.history.HistoryScreen
 import com.TheHashimq.zero.ui.main.MainScreen
@@ -156,7 +157,9 @@ fun ZeroShell(
                         if (stack.size > 1) {
                             TextButton(onClick = { back() }) { Text("‹ Back") }
                         } else {
-                            TextButton(onClick = { scope.launch { drawerState.open() } }) { Text("≡") }
+                            TextButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Text("≡", fontSize = 30.sp)
+                            }
                         }
                     },
                 )

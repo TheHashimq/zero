@@ -21,11 +21,12 @@ import zero.foundation.design.DesignTokens
 class StreakPaletteTest {
     private val graphicMinimum = 3.0
 
-    /** The palette has seven distinct colors. */
+    /** The palette has twelve distinct colors, and SIZE matches the list. */
     @Test
-    fun paletteHasSevenDistinctColors() {
-        assertEquals(7, StreakPalette.SIZE)
-        assertEquals(7, StreakPalette.COLORS.toSet().size)
+    fun paletteHasTwelveDistinctColors() {
+        assertEquals(12, StreakPalette.SIZE)
+        assertEquals(StreakPalette.SIZE, StreakPalette.COLORS.size)
+        assertEquals(12, StreakPalette.COLORS.toSet().size)
     }
 
     /** Every palette color is visible on Zero's background. */

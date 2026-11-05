@@ -146,7 +146,13 @@ fun StreakHomeScreen(
         ) {
             Box(modifier = Modifier.weight(1f)) { SectionLabel("Streaks") }
             Box {
-                OutlinedButton(onClick = { menuOpen = true }) { Text("More") }
+                TextButton(onClick = { menuOpen = true }) {
+                    Text(
+                        text = "⋯",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text("Import from Again") },

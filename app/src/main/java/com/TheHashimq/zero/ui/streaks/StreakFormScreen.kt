@@ -119,20 +119,24 @@ fun StreakFormScreen(
         )
 
         SectionLabel("Color")
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StreakPalette.COLORS.forEachIndexed { index, argb ->
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(Color(argb))
-                        .border(
-                            width = if (index == colorIndex) 3.dp else 0.dp,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            shape = CircleShape,
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            StreakPalette.COLORS.indices.chunked(6).forEach { rowIndices ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rowIndices.forEach { index ->
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(StreakPalette.COLORS[index]))
+                                .border(
+                                    width = if (index == colorIndex) 3.dp else 0.dp,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    shape = CircleShape,
+                                )
+                                .clickable { colorIndex = index },
                         )
-                        .clickable { colorIndex = index },
-                )
+                    }
+                }
             }
         }
 

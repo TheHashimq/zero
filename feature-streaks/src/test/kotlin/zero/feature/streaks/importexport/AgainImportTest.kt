@@ -137,6 +137,11 @@ class AgainImportTest {
                 0xFFFF2DF1.toInt(),
                 0xFFF93827.toInt(),
                 0xFFFF55BB.toInt(),
+                0xFF00E5D1.toInt(),
+                0xFFB388FF.toInt(),
+                0xFFFF8A80.toInt(),
+                0xFF69F0AE.toInt(),
+                0xFF40C4FF.toInt(),
             ),
             StreakPalette.COLORS,
         )
