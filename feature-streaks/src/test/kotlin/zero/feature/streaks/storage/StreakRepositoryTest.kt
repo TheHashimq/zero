@@ -244,4 +244,29 @@ class StreakRepositoryTest {
         }
     }
 
+    /** Reordering changes the displayed order and survives a reopen. */
+    @Test
+    fun reorderPersistsAcrossReopen() {
+        val dir = createTempDirectory("reorder").toFile()
+        val repo = StreakRepository.open(store(dir))
+        repo.addStreak(reading().copy(id = "a", name = "A"))
+        repo.addStreak(reading().copy(id = "b", name = "B"))
+        repo.addStreak(reading().copy(id = "c", name = "C"))
+
+        repo.reorder(listOf("c", "a", "b"))
+
+        assertEquals(listOf("c", "a", "b"), StreakRepository.open(store(dir)).definitions().map { it.id })
+    }
+
+    /** A reorder that leaves out a streak is rejected and changes nothing. */
+    @Test
+    fun reorderRequiresAllStreaks() {
+        val repo = StreakRepository.open(store(createTempDirectory("partial").toFile()))
+        repo.addStreak(reading().copy(id = "a"))
+        repo.addStreak(reading().copy(id = "b"))
+
+        assertFailsWith<IllegalArgumentException> { repo.reorder(listOf("a")) }
+        assertEquals(listOf("a", "b"), repo.definitions().map { it.id })
+    }
+
 }

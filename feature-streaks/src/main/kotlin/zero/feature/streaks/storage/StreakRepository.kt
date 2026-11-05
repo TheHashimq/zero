@@ -175,6 +175,15 @@ class StreakRepository private constructor(
         return true
     }
 
+    /** Sets the display order to [orderedIds]. Every streak must be listed exactly once. */
+    fun reorder(orderedIds: List<String>) {
+        require(orderedIds.size == streaks.size && orderedIds.toSet() == streaks.map { it.id }.toSet()) {
+            "reorder must list every streak exactly once"
+        }
+        val position = orderedIds.withIndex().associate { it.value to it.index }
+        commit(streaks.map { it.copy(order = position.getValue(it.id)) })
+    }
+
     private fun find(streakId: String): StoredStreak =
         streaks.firstOrNull { it.id == streakId } ?: throw IllegalArgumentException("unknown streak $streakId")
 

@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -65,6 +67,8 @@ import zero.feature.streaks.presentation.StreakCard
 import zero.feature.streaks.presentation.StreakCards
 import zero.feature.streaks.importexport.AgainImporter
 import zero.foundation.design.DesignTokens
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun StreakHomeScreen(store: StreakStore) {
@@ -116,6 +120,19 @@ fun StreakHomeScreen(store: StreakStore) {
         }
     }.orEmpty()
     val loadError = store.loadError
+    val listState = rememberLazyListState()
+    var ordered by remember(cards) { mutableStateOf(cards) }
+    var reorderError by remember { mutableStateOf<String?>(null) }
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val moved = ordered.toMutableList().apply { add(to.index, removeAt(from.index)) }
+        val result = store.update { repo -> repo.reorder(moved.map { it.id }) }
+        if (result.isSuccess) {
+            ordered = moved
+            reorderError = null
+        } else {
+            reorderError = result.exceptionOrNull()?.message ?: "Could not save the streak order."
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -140,41 +157,70 @@ fun StreakHomeScreen(store: StreakStore) {
             }
         }
         loadError?.let { StatusLine(it, Color(DesignTokens.WARNING)) }
+        reorderError?.let { StatusLine(it, Color(DesignTokens.CRITICAL)) }
         if (cards.isEmpty() && loadError == null) {
             StatusLine("No streaks yet.", MaterialTheme.colorScheme.onSurfaceVariant)
         }
         LazyColumn(
+            state = listState,
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(cards, key = { it.id }) { card -> StreakCardView(card) { viewing = card.id } }
+            items(ordered, key = { it.id }) { card ->
+                ReorderableItem(reorderState, key = card.id) { isDragging ->
+                    StreakCardView(
+                        card = card,
+                        dragging = isDragging,
+                        dragHandle = Modifier.longPressDraggableHandle(),
+                        onClick = { viewing = card.id },
+                    )
+                }
+            }
         }
         PrimaryButton("Add a streak") { creating = true }
     }
 }
 
 @Composable
-private fun StreakCardView(card: StreakCard, onClick: () -> Unit) {
+private fun StreakCardView(
+    card: StreakCard,
+    dragging: Boolean,
+    dragHandle: Modifier,
+    onClick: () -> Unit,
+) {
     val accent = Color(StreakPalette.COLORS[card.colorIndex])
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .shadow(if (dragging) 12.dp else 0.dp, RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(accent),
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(accent),
+                )
+                Text(
+                    text = "${card.emoji}  ${card.name}",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
             Text(
-                text = "${card.emoji}  ${card.name}",
+                text = "⋮⋮",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = dragHandle.padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
         StatusLine(card.summaryText, MaterialTheme.colorScheme.onSurfaceVariant)
