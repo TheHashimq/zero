@@ -19,6 +19,7 @@ import com.TheHashimq.zero.platform.clock.AndroidWallClockSource
 import com.TheHashimq.zero.platform.persistence.SharedPreferencesKeyValueBackend
 import com.TheHashimq.zero.platform.protection.AndroidAccessibilityEnabledProbe
 import com.TheHashimq.zero.platform.streaks.StreakStore
+import com.TheHashimq.zero.ui.streaks.StreakNavigationModule
 import zero.feature.protection.runtime.ProtectionAccessibilityHealthSource
 import zero.feature.protection.runtime.ProtectionModule
 import zero.feature.history.HistoryModule
@@ -44,6 +45,9 @@ class ZeroApplication : Application() {
 
     /** Read-only event history. */
     val historyModule: HistoryModule = HistoryModule()
+
+    /** Navigation entry and route for streaks. */
+    val streakNavigationModule: StreakNavigationModule = StreakNavigationModule()
 
     /** Streak storage. Opened lazily, after the application context exists. */
     val streaks: StreakStore by lazy { StreakStore(filesDir) }
@@ -81,6 +85,7 @@ class ZeroApplication : Application() {
         services = ZeroServices(clock, stores, events, health, navigation)
         registry.register(protectionModule)
         registry.register(historyModule)
+        registry.register(streakNavigationModule)
         registry.startAll(services)
         navigation.freeze()
         logHealth(health)

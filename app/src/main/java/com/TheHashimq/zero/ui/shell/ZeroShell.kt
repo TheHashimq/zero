@@ -37,10 +37,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.TheHashimq.zero.platform.streaks.StreakStore
 import com.TheHashimq.zero.ui.history.HistoryScreen
+import com.TheHashimq.zero.ui.main.MainScreen
 import com.TheHashimq.zero.ui.protection.ProtectionScreen
 import com.TheHashimq.zero.ui.protection.ProtectedAppsScreen
-import com.TheHashimq.zero.ui.main.MainScreen
+import com.TheHashimq.zero.ui.streaks.StreakHomeScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zero.foundation.design.DesignTokens
@@ -67,6 +69,7 @@ fun ZeroShell(
     health: HealthService,
     protection: ProtectionModule,
     history: HistoryModule,
+    streaks: StreakStore,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -146,6 +149,7 @@ fun ZeroShell(
                         "protection" -> ProtectionScreen(protection)
                         ProtectionModule.PROTECTED_APPS_ROUTE -> ProtectedAppsScreen(protection)
                         "history" -> HistoryScreen(history)
+                        "streaks" -> StreakHomeScreen(streaks)
                         else -> Text("Screen for '${current.id}' is not built yet")
                     }
                 }

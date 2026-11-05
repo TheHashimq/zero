@@ -28,6 +28,7 @@ class ZeroActivity : ComponentActivity() {
                     app.services.health,
                     app.protectionModule,
                     app.historyModule,
+                    app.streaks,
                 )
             }
         }
