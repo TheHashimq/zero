@@ -14,7 +14,8 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="Zero"
-        android:theme="@style/Theme.AppCompat.NoActionBar">
+        android:theme="@style/Theme.AppCompat.NoActionBar"
+        android:enableOnBackInvokedCallback="true">
 
         <activity
             android:name=".ZeroActivity"

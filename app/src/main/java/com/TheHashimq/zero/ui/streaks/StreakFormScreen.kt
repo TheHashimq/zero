@@ -68,6 +68,7 @@ fun StreakFormScreen(
     store: StreakStore,
     existing: StreakDefinition?,
     onDone: () -> Unit,
+    onDeleted: () -> Unit,
 ) {
     val repo = store.repository
     val hasEntries = existing != null && repo?.entries(existing.id)?.isNotEmpty() == true
@@ -250,7 +251,7 @@ fun StreakFormScreen(
                 TextButton(onClick = {
                     val result = store.update { it.deleteStreak(existing.id) }
                     if (result.isSuccess) {
-                        onDone()
+                        onDeleted()
                     } else {
                         message = result.exceptionOrNull()?.message ?: "Could not delete the streak."
                     }

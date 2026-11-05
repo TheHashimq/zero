@@ -60,7 +60,6 @@ import com.TheHashimq.zero.ui.components.StatusLine
 import java.io.IOException
 import java.time.LocalDate
 import zero.feature.streaks.PeriodStatus
-import zero.feature.streaks.StreakDefinition
 import zero.feature.streaks.StreakPalette
 import zero.feature.streaks.presentation.Progress
 import zero.feature.streaks.presentation.StreakCard
@@ -71,10 +70,11 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
-fun StreakHomeScreen(store: StreakStore) {
-    var editing by remember { mutableStateOf<StreakDefinition?>(null) }
-    var creating by remember { mutableStateOf(false) }
-    var viewing by remember { mutableStateOf<String?>(null) }
+fun StreakHomeScreen(
+    store: StreakStore,
+    onOpen: (String) -> Unit,
+    onAdd: () -> Unit,
+) {
     val context = LocalContext.current
     var importText by remember { mutableStateOf<String?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
@@ -93,26 +93,6 @@ fun StreakHomeScreen(store: StreakStore) {
             confirmButton = { TextButton(onClick = { importText = null }) { Text("OK") } },
         )
     }
-    if (creating || editing != null) {
-        StreakFormScreen(store, editing) {
-            creating = false
-            editing = null
-        }
-        return
-    }
-    viewing?.let { id ->
-        StreakDetailsScreen(
-            store = store,
-            streakId = id,
-            onEdit = {
-                editing = store.read { repo -> repo.definitions().firstOrNull { it.id == id } }
-                viewing = null
-            },
-            onBack = { viewing = null },
-        )
-        return
-    }
-
     val today = store.today()
     val cards = store.read { repo ->
         repo.definitions().map { definition ->
@@ -172,12 +152,12 @@ fun StreakHomeScreen(store: StreakStore) {
                         card = card,
                         dragging = isDragging,
                         dragHandle = Modifier.longPressDraggableHandle(),
-                        onClick = { viewing = card.id },
+                        onClick = { onOpen(card.id) },
                     )
                 }
             }
         }
-        PrimaryButton("Add a streak") { creating = true }
+        PrimaryButton("Add a streak") { onAdd() }
     }
 }
 
