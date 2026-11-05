@@ -219,4 +219,29 @@ class StreakRepositoryTest {
             repo.entries("read").map { LocalDate.parse(it.date) },
         )
     }
+
+    /** Replacing one day's entries leaves the other days untouched. */
+    @Test
+    fun replaceDayEntriesOnlyTouchesThatDay() {
+        val repo = StreakRepository.open(store(createTempDirectory("day").toFile()))
+        repo.addStreak(reading())
+        repo.addEntry("read", Entry(today.minusDays(1), amount = 5), today)
+        repo.addEntry("read", Entry(today, amount = 3), today)
+
+        repo.replaceDayEntries("read", today, listOf(Entry(today, amount = 7)), today)
+
+        assertEquals(listOf(5, 7), repo.identifiedEntries("read").map { it.entry.amount })
+    }
+
+    /** Replacing a day with an entry dated another day is rejected. */
+    @Test
+    fun replaceDayEntriesRejectsWrongDate() {
+        val repo = StreakRepository.open(store(createTempDirectory("wrong").toFile()))
+        repo.addStreak(reading())
+
+        assertFailsWith<IllegalArgumentException> {
+            repo.replaceDayEntries("read", today, listOf(Entry(today.minusDays(1))), today)
+        }
+    }
+
 }

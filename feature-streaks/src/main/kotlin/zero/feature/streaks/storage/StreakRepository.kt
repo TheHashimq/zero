@@ -7,7 +7,8 @@
  * DOES NOT OWN: Evaluation rules (StreakEngine) and file details (StreakFileStore).
  * DEPENDENCIES: StreakEngine, StreakDefinition, Entry, StreakFile, StreakFileStore.
  * CONTRACT: Every change is written before it becomes visible. A failed write restores the previous state.
- *           Entries are added or deleted, never edited. Mode and frequency cannot change once a streak has entries.
+ *           Entries are added or deleted; checklist entries for one day can be replaced atomically. Mode and
+ *           frequency cannot change once a streak has entries.
  *           A file with a newer schema is never overwritten.
  * FAILURE BEHAVIOR: An unreadable or invalid file is renamed to streaks.json.corrupt, and the repository opens
  *                   empty with recoveredFromCorrupt = true. A newer schema throws UnsupportedSchemaException and
@@ -27,6 +28,9 @@ import zero.feature.streaks.StreakDefinition
 import zero.feature.streaks.StreakEngine
 import zero.feature.streaks.StreakMode
 import zero.feature.streaks.StreakSummary
+
+/** A stored entry with its ID, so a screen can delete a single entry. */
+data class IdentifiedEntry(val id: String, val entry: Entry)
 
 class StreakStorageException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
@@ -132,6 +136,31 @@ class StreakRepository private constructor(
         val stored = find(streakId)
         require(stored.entries.any { it.id == entryId }) { "unknown entry $entryId" }
         val updated = stored.copy(entries = stored.entries.filterNot { it.id == entryId })
+        commit(streaks.map { if (it.id == streakId) updated else it })
+    }
+
+    /** Entries for one streak with their IDs, oldest first. */
+    fun identifiedEntries(streakId: String): List<IdentifiedEntry> =
+        find(streakId).entries
+            .sortedWith(compareBy({ it.date }, { it.id }))
+            .map { IdentifiedEntry(it.id, it.toEntry()) }
+
+    /**
+     * Replaces every entry dated [date] with [entries] in one save. Checklists use this to keep one entry per day.
+     * Other days are untouched. Entries must be dated [date], and the date must be valid.
+     */
+    fun replaceDayEntries(streakId: String, date: LocalDate, entries: List<Entry>, today: LocalDate) {
+        val stored = find(streakId)
+        val def = stored.toDefinition()
+        require(!date.isAfter(today)) { "entries cannot be dated after today" }
+        require(!date.isBefore(def.createdOn)) { "entries cannot be dated before the streak was created" }
+        entries.forEach { entry ->
+            require(entry.date == date) { "entry dated ${entry.date} does not belong to $date" }
+            StreakEngine.validate(def, entry)
+        }
+        val kept = stored.entries.filterNot { it.date == date.toString() }
+        val added = entries.map { storedEntryFrom(UUID.randomUUID().toString(), it) }
+        val updated = stored.copy(entries = kept + added)
         commit(streaks.map { if (it.id == streakId) updated else it })
     }
 

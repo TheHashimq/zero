@@ -1,12 +1,12 @@
 /*
  * MODULE: app (streaks home screen)
- * PURPOSE: Shows a card for each streak with today's progress, current and best streaks, and an Add action.
+ * PURPOSE: Shows every streak and routes to add, edit, and details screens.
  * TAKES: The StreakStore from ZeroApplication.
  * GIVES: A Compose list that refreshes when the store changes or the date changes.
  * OWNS: Only the displayed notice.
  * DOES NOT OWN: Streak rules or storage. Those live in feature-streaks.
  * DEPENDENCIES: feature-streaks, foundation-design, Compose Material3, shared components.
- * CONTRACT: Read-only in this phase. Add shows a notice until the add form arrives in S3c.
+ * CONTRACT: Home cards open the streak details; add and edit use the streak form.
  * FAILURE BEHAVIOR: A load error is shown as a message. Nothing crashes if storage is unavailable.
  */
 package com.TheHashimq.zero.ui.streaks
@@ -54,11 +54,24 @@ import zero.foundation.design.DesignTokens
 fun StreakHomeScreen(store: StreakStore) {
     var editing by remember { mutableStateOf<StreakDefinition?>(null) }
     var creating by remember { mutableStateOf(false) }
+    var viewing by remember { mutableStateOf<String?>(null) }
     if (creating || editing != null) {
         StreakFormScreen(store, editing) {
             creating = false
             editing = null
         }
+        return
+    }
+    viewing?.let { id ->
+        StreakDetailsScreen(
+            store = store,
+            streakId = id,
+            onEdit = {
+                editing = store.read { repo -> repo.definitions().firstOrNull { it.id == id } }
+                viewing = null
+            },
+            onBack = { viewing = null },
+        )
         return
     }
 
@@ -83,11 +96,7 @@ fun StreakHomeScreen(store: StreakStore) {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(cards, key = { it.id }) { card ->
-                StreakCardView(card) {
-                    editing = store.read { repo -> repo.definitions().firstOrNull { it.id == card.id } }
-                }
-            }
+            items(cards, key = { it.id }) { card -> StreakCardView(card) { viewing = card.id } }
         }
         PrimaryButton("Add a streak") { creating = true }
     }
