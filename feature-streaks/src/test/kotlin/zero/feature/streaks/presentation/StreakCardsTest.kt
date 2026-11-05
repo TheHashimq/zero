@@ -1,3 +1,14 @@
+/*
+ * MODULE: feature-streaks tests
+ * PURPOSE: Verifies the Home card values for each mode, the dot limit, limit flags, and empty summaries.
+ * TAKES: Fixed definitions and entries with today set to 2026-01-10.
+ * GIVES: Pass/fail results for the card model.
+ * OWNS: No production state.
+ * DOES NOT OWN: Drawing.
+ * DEPENDENCIES: feature-streaks.
+ * CONTRACT: Each test asserts one display rule.
+ * FAILURE BEHAVIOR: Assertion failures identify the wrong value.
+ */
 package zero.feature.streaks.presentation
 
 import java.time.LocalDate
@@ -37,6 +48,7 @@ class StreakCardsTest {
     private fun card(def: StreakDefinition, entries: List<Entry>): StreakCard =
         StreakCards.build(def, StreakEngine.summarize(def, entries, today))
 
+    /** A weekly check-in streak shows dots for the check-ins so far this week. */
     @Test
     fun checkInWeeklyShowsDotsAndText() {
         val c = card(
@@ -48,6 +60,7 @@ class StreakCardsTest {
         assertEquals("2 of 3 this week", c.summaryText)
     }
 
+    /** A check-in target above the dot limit is drawn as a bar instead. */
     @Test
     fun checkInAboveDotLimitUsesBar() {
         val c = card(def(StreakMode.CHECK_IN, Frequency.WEEKLY, target = 20), emptyList())
@@ -55,6 +68,7 @@ class StreakCardsTest {
         assertIs<Progress.Bar>(c.progress)
     }
 
+    /** An amount streak shows the day's total against the target. */
     @Test
     fun amountShowsBarAndText() {
         val c = card(def(StreakMode.AMOUNT), listOf(Entry(today, amount = 4)))
@@ -63,6 +77,7 @@ class StreakCardsTest {
         assertEquals("4 of 10 today", c.summaryText)
     }
 
+    /** A limit day over the limit is flagged and worded as exceeded. */
     @Test
     fun limitOverTargetIsFlagged() {
         val c = card(def(StreakMode.LIMIT, target = 120), listOf(Entry(today, amount = 130)))
@@ -71,6 +86,7 @@ class StreakCardsTest {
         assertEquals("130 of 120 limit exceeded", c.summaryText)
     }
 
+    /** A limit day under the limit shows the usage as a maximum. */
     @Test
     fun limitUnderTargetShowsMaximum() {
         val c = card(def(StreakMode.LIMIT, target = 120), listOf(Entry(today, amount = 60)))
@@ -79,6 +95,7 @@ class StreakCardsTest {
         assertEquals("60 of 120 max today", c.summaryText)
     }
 
+    /** A checklist shows the percentage of weight done. Fard alone, of 3 and 1, is 75%. */
     @Test
     fun checklistShowsPercent() {
         val checklist = def(
@@ -92,15 +109,20 @@ class StreakCardsTest {
         assertEquals("75% done today", c.summaryText)
     }
 
+    /** Current and best streaks, status, name, emoji, and color are carried onto the card. */
     @Test
-    fun streaksAndStatusAreCarried() {
+    fun streaksStatusAndIdentityAreCarried() {
         val c = card(def(StreakMode.AMOUNT), listOf(Entry(today.minusDays(1), amount = 10)))
 
         assertEquals(1, c.current)
         assertEquals(1, c.best)
         assertEquals(PeriodStatus.OPEN, c.status)
+        assertEquals("Streak", c.name)
+        assertEquals("B", c.emoji)
+        assertEquals(0, c.colorIndex)
     }
 
+    /** A summary with no periods gives an open, empty card and does not throw. */
     @Test
     fun emptySummaryGivesOpenEmptyCard() {
         val summary = StreakSummary(
