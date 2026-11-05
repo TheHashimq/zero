@@ -34,7 +34,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,13 +46,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.TheHashimq.zero.platform.streaks.StreakStore
 import com.TheHashimq.zero.ui.components.PrimaryButton
-import com.TheHashimq.zero.ui.components.SecondaryButton
 import com.TheHashimq.zero.ui.components.SectionLabel
 import com.TheHashimq.zero.ui.components.StatusLine
 import java.io.IOException
@@ -70,6 +73,7 @@ fun StreakHomeScreen(store: StreakStore) {
     var viewing by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     var importText by remember { mutableStateOf<String?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) importText = runImport(context, store, uri)
     }
@@ -117,7 +121,24 @@ fun StreakHomeScreen(store: StreakStore) {
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        SectionLabel("Streaks")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(modifier = Modifier.weight(1f)) { SectionLabel("Streaks") }
+            Box {
+                OutlinedButton(onClick = { menuOpen = true }) { Text("More") }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Import from Again") },
+                        onClick = {
+                            menuOpen = false
+                            importLauncher.launch(arrayOf("application/json", "*/*"))
+                        },
+                    )
+                }
+            }
+        }
         loadError?.let { StatusLine(it, Color(DesignTokens.WARNING)) }
         if (cards.isEmpty() && loadError == null) {
             StatusLine("No streaks yet.", MaterialTheme.colorScheme.onSurfaceVariant)
@@ -128,16 +149,7 @@ fun StreakHomeScreen(store: StreakStore) {
         ) {
             items(cards, key = { it.id }) { card -> StreakCardView(card) { viewing = card.id } }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            PrimaryButton("Add a streak", modifier = Modifier.weight(1f)) { creating = true }
-            SecondaryButton(
-                "Import from Again",
-                modifier = Modifier.weight(1f),
-            ) { importLauncher.launch(arrayOf("application/json", "*/*")) }
-        }
+        PrimaryButton("Add a streak") { creating = true }
     }
 }
 
