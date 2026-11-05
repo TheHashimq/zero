@@ -7,8 +7,8 @@
  * DOES NOT OWN: Evaluation rules (StreakEngine) and file details (StreakFileStore).
  * DEPENDENCIES: StreakEngine, StreakDefinition, Entry, StreakFile, StreakFileStore.
  * CONTRACT: Every change is written before it becomes visible. A failed write restores the previous state.
- *           Entries are added or deleted; checklist entries for one day can be replaced atomically. Mode and
- *           frequency cannot change once a streak has entries.
+ *           Entries are added, deleted, or replaced atomically. Updating a streak converts history if its mode
+ *           or checklist parts change.
  *           A file with a newer schema is never overwritten.
  * FAILURE BEHAVIOR: An unreadable or invalid file is renamed to streaks.json.corrupt, and the repository opens
  *                   empty with recoveredFromCorrupt = true. A newer schema throws UnsupportedSchemaException and
@@ -99,12 +99,13 @@ class StreakRepository private constructor(
 
     fun updateStreak(def: StreakDefinition) {
         val current = find(def.id)
-        if (current.entries.isNotEmpty()) {
-            require(current.mode == def.mode.name && current.frequency == def.frequency.name) {
-                "mode and frequency cannot change after entries exist"
-            }
-        }
-        commit(streaks.map { if (it.id == def.id) def.toStored(current.order, current.entries) else it })
+        val converted = EntryConversion.convert(
+            entries = current.entries,
+            fromMode = current.toDefinition().mode,
+            toMode = def.mode,
+            toPartNames = def.parts.map { it.name },
+        )
+        commit(streaks.map { if (it.id == def.id) def.toStored(current.order, converted) else it })
     }
 
     fun deleteStreak(streakId: String) {

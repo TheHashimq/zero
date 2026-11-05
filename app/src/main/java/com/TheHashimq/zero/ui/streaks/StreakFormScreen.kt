@@ -94,8 +94,8 @@ fun StreakFormScreen(
     var confirmDelete by remember { mutableStateOf(false) }
 
     val form = StreakForm(name, emoji, colorIndex, mode, frequency, target, parts.toList())
-    val lockMode = hasEntries
-    val lockParts = hasEntries
+    val lockMode = false
+    val lockParts = false
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),

@@ -7,8 +7,7 @@
  * DOES NOT OWN: Storage or screens.
  * DEPENDENCIES: StreakDefinition types, StreakPalette.
  * CONTRACT: Checklists are daily, have at least one part, and have unique non-blank names with weights 1 to 10.
- *           Other modes need a target of at least 1. Once a streak has entries, mode, frequency, and checklist
- *           parts cannot change, so past results are never rewritten.
+ *           Other modes need a target of at least 1. Edits are allowed with history; saving converts entries.
  * FAILURE BEHAVIOR: Never throws. build returns a failure when the form is invalid.
  */
 package zero.feature.streaks.presentation
@@ -93,28 +92,17 @@ object StreakFormRules {
         }
     }
 
-    /** The form values for an existing streak, used to pre-fill the edit screen. */
+    /** The form values for an existing streak. Checklist targets are shown as 1 for mode switching. */
     fun fromDefinition(def: StreakDefinition): StreakForm = StreakForm(
         name = def.name,
         emoji = def.emoji,
         colorIndex = def.colorIndex,
         mode = def.mode,
         frequency = def.frequency,
-        target = def.target,
+        target = if (def.mode == StreakMode.CHECKLIST) 1 else def.target,
         parts = def.parts.map { StreakFormPart(it.name, it.weight) },
     )
 
-    /** Problems with an edit that would rewrite history. Empty when the edit is allowed. */
-    fun lockedChangeErrors(existing: StreakDefinition, form: StreakForm, hasEntries: Boolean): List<String> {
-        if (!hasEntries) return emptyList()
-        val problems = mutableListOf<String>()
-        if (form.mode != existing.mode) problems += "Mode is locked once the streak has entries."
-        if (form.frequency != existing.frequency) problems += "Frequency is locked once the streak has entries."
-        val newParts = form.parts.map { it.name.trim() to it.weight }
-        val oldParts = existing.parts.map { it.name to it.weight }
-        if (form.mode == StreakMode.CHECKLIST && newParts != oldParts) {
-            problems += "Checklist parts are locked once the streak has entries."
-        }
-        return problems
-    }
+    /** Edits are always allowed. Saving converts existing history to the new mode. */
+    fun lockedChangeErrors(existing: StreakDefinition, form: StreakForm, hasEntries: Boolean): List<String> = emptyList()
 }

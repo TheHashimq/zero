@@ -167,16 +167,17 @@ class StreakRepositoryTest {
         assertEquals("Quran", repo.definitions().single().name)
     }
 
-    /** Changing a streak's mode once it has entries is rejected. */
+    /** Changing mode keeps the history and converts it, instead of rejecting the change. */
     @Test
-    fun changingModeWithEntriesIsRejected() {
-        val repo = StreakRepository.open(store(createTempDirectory("l").toFile()))
+    fun changingModeConvertsHistory() {
+        val repo = StreakRepository.open(store(createTempDirectory("convert").toFile()))
         repo.addStreak(reading())
-        repo.addEntry("read", Entry(today), today)
+        repo.addEntry("read", Entry(today.minusDays(1), amount = 10), today)
 
-        assertFailsWith<IllegalArgumentException> {
-            repo.updateStreak(reading().copy(mode = StreakMode.LIMIT))
-        }
+        repo.updateStreak(reading().copy(mode = StreakMode.CHECK_IN))
+
+        assertEquals(1, repo.entries("read").size)
+        assertEquals(0, repo.entries("read").single().amount)
     }
 
     /** A failed save throws and leaves the in-memory list unchanged. */

@@ -1,6 +1,6 @@
 /*
  * MODULE: feature-streaks tests
- * PURPOSE: Verifies form validation, building definitions, and the history-locking rules for edits.
+ * PURPOSE: Verifies form validation, building definitions, and edit behavior with existing history.
  * TAKES: Explicit form values and definitions.
  * GIVES: Pass/fail results for the form rules.
  * OWNS: No production state.
@@ -110,27 +110,17 @@ class StreakFormRulesTest {
         assertTrue(StreakFormRules.errors(prayer(StreakFormPart("fard", 11))).any { it.contains("Weights") })
     }
 
-    /** Changing mode or checklist parts is rejected once entries exist. */
+    /** Mode can change once entries exist. History is converted when the streak is saved. */
     @Test
-    fun lockedFieldsRejectChangesWhenEntriesExist() {
-        val existing = definition(StreakMode.CHECKLIST, Frequency.DAILY, listOf(ChecklistPart("fard", 3)))
-        val changed = prayer(StreakFormPart("fard", 3), StreakFormPart("sunnah", 1))
-
-        assertTrue(StreakFormRules.lockedChangeErrors(existing, changed, hasEntries = true).isNotEmpty())
-    }
-
-    /** Changing mode is rejected once entries exist. */
-    @Test
-    fun modeChangeRejectedWhenEntriesExist() {
+    fun modeChangeAllowedWhenEntriesExist() {
         val existing = definition(StreakMode.AMOUNT, Frequency.DAILY, emptyList())
 
-        assertTrue(StreakFormRules.lockedChangeErrors(existing, amount(), hasEntries = true).isEmpty())
         assertTrue(
             StreakFormRules.lockedChangeErrors(
                 existing,
                 amount().copy(mode = StreakMode.LIMIT),
                 hasEntries = true,
-            ).any { it.contains("Mode") },
+            ).isEmpty(),
         )
     }
 
@@ -148,6 +138,20 @@ class StreakFormRulesTest {
         )
     }
 
+    /** Checklist parts can change once entries exist. */
+    @Test
+    fun checklistChangeAllowedWhenEntriesExist() {
+        val existing = definition(StreakMode.CHECKLIST, Frequency.DAILY, listOf(ChecklistPart("fard", 3)))
+
+        assertTrue(
+            StreakFormRules.lockedChangeErrors(
+                existing,
+                prayer(StreakFormPart("fard", 3), StreakFormPart("sunnah", 1)),
+                hasEntries = true,
+            ).isEmpty(),
+        )
+    }
+
     /** A target change is allowed once entries exist, since it is the current goal. */
     @Test
     fun targetChangeAllowedWhenEntriesExist() {
@@ -160,9 +164,10 @@ class StreakFormRulesTest {
     @Test
     fun formRoundTripKeepsFields() {
         val existing = definition(StreakMode.CHECKLIST, Frequency.DAILY, listOf(ChecklistPart("fard", 3)))
+        val form = StreakFormRules.fromDefinition(existing)
 
         val rebuilt = StreakFormRules.build(
-            StreakFormRules.fromDefinition(existing),
+            form,
             "s1",
             created,
             DayOfWeek.MONDAY,
@@ -172,5 +177,6 @@ class StreakFormRulesTest {
         assertEquals(existing.parts, rebuilt.parts)
         assertEquals(existing.mode, rebuilt.mode)
         assertEquals(existing.name, rebuilt.name)
+        assertEquals(1, form.target)
     }
 }
