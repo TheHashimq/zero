@@ -91,6 +91,7 @@ fun ProtectionScreen(module: ProtectionModule) {
             SectionLabel("Status")
             StatusLine(describe(state, now), MaterialTheme.colorScheme.onBackground)
             StatusLine("Protected apps: $protectedCount", MaterialTheme.colorScheme.onSurfaceVariant)
+            DeviceAdminRow()
             StatusLine(
                 "Minimum commitment: ${minimum / MINUTE_MILLIS} min",
                 MaterialTheme.colorScheme.onSurfaceVariant,
