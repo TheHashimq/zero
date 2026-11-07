@@ -37,12 +37,12 @@ class SelfScreenClassifierTest {
         assertEquals(SelfScreen.UNINSTALL_OTHER, SelfScreenClassifier.classify(installer, texts, label))
     }
 
-    /** An install dialog, with no uninstall text, is NONE. */
+    /** An installer prompt to install an app is an install screen, not an uninstall. */
     @Test
-    fun installerInstallDialogIsNone() {
+    fun installerInstallPromptIsInstallScreen() {
         val texts = listOf("Do you want to install this app?", "Zero")
 
-        assertEquals(SelfScreen.NONE, SelfScreenClassifier.classify(installer, texts, label))
+        assertEquals(SelfScreen.INSTALL_SCREEN, SelfScreenClassifier.classify(installer, texts, label))
     }
 
     /** Zero's App info page with a destructive action is APP_INFO_ZERO. */
@@ -74,6 +74,36 @@ class SelfScreenClassifierTest {
     fun onlyInstallerAndSettingsAreReadForContent() {
         assertTrue(SelfScreenClassifier.readsContentFor(installer))
         assertTrue(SelfScreenClassifier.readsContentFor(settings))
+        assertTrue(SelfScreenClassifier.readsContentFor("com.example.installer"))
+        assertTrue(SelfScreenClassifier.readsContentFor("com.example.app", "com.example.UninstallActivity"))
         assertFalse(SelfScreenClassifier.readsContentFor("com.example.notes"))
+    }
+
+    /** The Play Store is an install screen by package alone. */
+    @Test
+    fun playStoreIsInstallScreen() {
+        assertEquals(
+            SelfScreen.INSTALL_SCREEN,
+            SelfScreenClassifier.classify(SelfScreenClassifier.PLAY_STORE_PACKAGE, emptyList(), label),
+        )
+    }
+
+    /** The "Install unknown apps" page in Settings is an install screen. */
+    @Test
+    fun settingsInstallUnknownAppsIsInstallScreen() {
+        val texts = listOf("Install unknown apps", "Chrome")
+
+        assertEquals(SelfScreen.INSTALL_SCREEN, SelfScreenClassifier.classify(settings, texts, label))
+    }
+
+    /** Installer activity class names identify uninstall screens even when the package is not in the known list. */
+    @Test
+    fun uninstallActivityClassIdentifiesOtherUninstall() {
+        val texts = listOf("Do you want to uninstall this app?", "Calculator")
+
+        assertEquals(
+            SelfScreen.UNINSTALL_OTHER,
+            SelfScreenClassifier.classify("com.example.systemui", texts, label, "com.example.UninstallActivity"),
+        )
     }
 }

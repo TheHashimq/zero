@@ -70,12 +70,13 @@ class ProtectionAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val packageName = event.packageName?.toString() ?: return
+        val className = event.className?.toString()
         val c = coordinator() ?: return
 
-        // Installer and Settings windows are read so Zero's own uninstall and App info can be recognized.
-        val readable = SelfScreenClassifier.readsContentFor(packageName)
+        // Installer and Settings windows are read so install and Zero-specific screens can be recognized.
+        val readable = SelfScreenClassifier.readsContentFor(packageName, className)
         val texts = if (readable) readTexts() else emptyList()
-        val screen = SelfScreenClassifier.classify(packageName, texts, SELF_LABEL)
+        val screen = SelfScreenClassifier.classify(packageName, texts, SELF_LABEL, className)
         if (readable) {
             Log.i(TAG, "installer-like window pkg=$packageName screen=$screen")
         }

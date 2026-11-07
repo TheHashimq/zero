@@ -59,4 +59,18 @@ class SelfProtectionPolicyTest {
             assertEquals(SelfDecision.RedirectHome, SelfProtectionPolicy.decide(SelfScreen.APP_INFO_ZERO, state))
         }
     }
+
+    /** Installs are blocked while Armed or during a countdown. */
+    @Test
+    fun installIsBlockedOutsideGrace() {
+        listOf(armed, countdown).forEach { state ->
+            assertEquals(SelfDecision.RedirectHome, SelfProtectionPolicy.decide(SelfScreen.INSTALL_SCREEN, state))
+        }
+    }
+
+    /** Installs are allowed during grace. */
+    @Test
+    fun installIsAllowedDuringGrace() {
+        assertEquals(SelfDecision.Allow, SelfProtectionPolicy.decide(SelfScreen.INSTALL_SCREEN, grace))
+    }
 }
