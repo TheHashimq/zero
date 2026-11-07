@@ -6,10 +6,9 @@
  * OWNS: No state.
  * DOES NOT OWN: Performing the redirect or ending the grace window. The coordinator does that.
  * DEPENDENCIES: SelfScreen, ProtectionState.
- * CONTRACT: Uninstall dialogs for any app and Zero's App info are blocked in Armed and Countdown.
- *           In Grace, other apps' uninstall dialogs are allowed. Opening Zero's uninstall dialog during Grace
- *           ends the grace at once. Zero's App info is blocked in every state.
- *           No redirect guard applies: Home never reopens these screens, so a guard only opens a bypass window.
+ * CONTRACT: Uninstalling any other app is always allowed. Uninstalling Zero and opening Zero's App info are blocked
+ *           in every state, except that uninstalling Zero during Grace ends the grace at once.
+ *           No redirect guard applies, since Home never reopens these screens.
  * FAILURE BEHAVIOR: Never throws.
  */
 package zero.feature.protection
@@ -30,10 +29,7 @@ sealed interface SelfDecision {
 object SelfProtectionPolicy {
     fun decide(screen: SelfScreen, state: ProtectionState): SelfDecision = when (screen) {
         SelfScreen.NONE -> SelfDecision.Allow
-        SelfScreen.UNINSTALL_OTHER -> when (state) {
-            is ProtectionState.Grace -> SelfDecision.Allow
-            else -> SelfDecision.RedirectHome
-        }
+        SelfScreen.UNINSTALL_OTHER -> SelfDecision.Allow
         SelfScreen.UNINSTALL_ZERO -> when (state) {
             is ProtectionState.Grace -> SelfDecision.RedirectHomeAndEndGrace
             else -> SelfDecision.RedirectHome

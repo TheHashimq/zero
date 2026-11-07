@@ -286,17 +286,15 @@ class ProtectionCoordinatorTest {
         assertTrue(c.state() is ProtectionState.Grace)
     }
 
-    /** Uninstalling another app during a countdown is blocked and recorded with its screen type. */
+    /** Uninstalling another app during a countdown is allowed and records nothing. */
     @Test
-    fun uninstallOtherDuringCountdownIsBlockedAndRecorded() {
+    fun uninstallOtherDuringCountdownIsAllowed() {
         val f = Fixture()
         val c = f.coordinator()
         c.startCommitment(MINUTE)
 
-        assertEquals(ProtectionAction.RedirectHome, c.onSelfScreen(SelfScreen.UNINSTALL_OTHER))
-
-        val blocked = f.events.recent(10).first { it.type.value == "protection.self-blocked" }
-        assertEquals(mapOf("screen" to "UNINSTALL_OTHER"), blocked.payload)
+        assertEquals(ProtectionAction.Allow, c.onSelfScreen(SelfScreen.UNINSTALL_OTHER))
+        assertEquals(listOf("protection.started"), f.types())
     }
 
     /** Grace ended by an uninstall attempt stays ended after a restart. */

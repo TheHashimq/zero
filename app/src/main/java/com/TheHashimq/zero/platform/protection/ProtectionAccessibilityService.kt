@@ -72,8 +72,13 @@ class ProtectionAccessibilityService : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         val c = coordinator() ?: return
 
-        val texts = if (SelfScreenClassifier.readsContentFor(packageName)) readTexts() else emptyList()
+        // Installer and Settings windows are read so Zero's own uninstall and App info can be recognized.
+        val readable = SelfScreenClassifier.readsContentFor(packageName)
+        val texts = if (readable) readTexts() else emptyList()
         val screen = SelfScreenClassifier.classify(packageName, texts, SELF_LABEL)
+        if (readable) {
+            Log.i(TAG, "installer-like window pkg=$packageName screen=$screen")
+        }
         if (screen != SelfScreen.NONE) {
             if (c.onSelfScreen(screen) == ProtectionAction.RedirectHome) {
                 performGlobalAction(GLOBAL_ACTION_HOME)

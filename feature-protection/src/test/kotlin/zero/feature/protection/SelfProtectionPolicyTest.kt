@@ -1,6 +1,6 @@
 /*
  * MODULE: feature-protection tests
- * PURPOSE: Verifies every self-protection rule for each screen and state.
+ * PURPOSE: Verifies the self-protection rules for each screen and state.
  * TAKES: Explicit screens and states.
  * GIVES: Pass/fail results for the policy.
  * OWNS: No production state.
@@ -27,25 +27,12 @@ class SelfProtectionPolicyTest {
         }
     }
 
-    /** Uninstalling any app is blocked while Armed. */
+    /** Uninstalling another app is allowed in every state. */
     @Test
-    fun uninstallOtherIsBlockedWhileArmed() {
-        assertEquals(SelfDecision.RedirectHome, SelfProtectionPolicy.decide(SelfScreen.UNINSTALL_OTHER, armed))
-    }
-
-    /** Uninstalling any app is blocked during a countdown. */
-    @Test
-    fun uninstallOtherIsBlockedDuringCountdown() {
-        assertEquals(
-            SelfDecision.RedirectHome,
-            SelfProtectionPolicy.decide(SelfScreen.UNINSTALL_OTHER, countdown),
-        )
-    }
-
-    /** Uninstalling other apps is allowed during grace. */
-    @Test
-    fun uninstallOtherIsAllowedDuringGrace() {
-        assertEquals(SelfDecision.Allow, SelfProtectionPolicy.decide(SelfScreen.UNINSTALL_OTHER, grace))
+    fun uninstallOtherIsAllowedInEveryState() {
+        listOf(armed, countdown, grace).forEach { state ->
+            assertEquals(SelfDecision.Allow, SelfProtectionPolicy.decide(SelfScreen.UNINSTALL_OTHER, state))
+        }
     }
 
     /** Uninstalling Zero during grace ends the grace at once. */
