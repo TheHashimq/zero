@@ -1,14 +1,15 @@
 /*
  * MODULE: app (accessibility adapter for protection)
- * PURPOSE: Reports foreground changes and self-protection screens to the coordinator, and sends the user Home when told to.
- * TAKES: Window-state events, screen-off broadcasts, and a periodic tick. Reads window text only on installer and Settings windows.
+ * PURPOSE: Checks the app in front whenever it opens or changes, and sends the user Home when told to.
+ * TAKES: Window-state and content-change events, screen-off broadcasts, and a periodic tick.
  * GIVES: Global Home action when the coordinator returns RedirectHome.
- * OWNS: The screen-off receiver and the tick handler. No protection state.
+ * OWNS: The foreground app, the throttle timestamp, the screen-off receiver, and the tick handler.
  * DOES NOT OWN: Protection decisions, persistence, or events.
  * DEPENDENCIES: feature-protection-runtime, feature-protection, ZeroApplication, Android accessibility APIs.
- * CONTRACT: Text is read only on installer and Settings windows, checked in memory, and never stored or logged.
- *           Sends Home only on RedirectHome.
- * FAILURE BEHAVIOR: Persistence failures on tick or screen-off are logged and retried on the next tick.
+ * CONTRACT: A new window and any content change inside the app in front run the same check. Content checks are
+ *           throttled to one per 300 ms. Text is read only on installer and Settings windows, checked in memory,
+ *           and never stored or logged. Sends Home only on RedirectHome.
+ * FAILURE BEHAVIOR: Persistence failures are logged and retried on the next event or tick.
  *                   A missing coordinator means no action.
  */
 package com.TheHashimq.zero.platform.protection
@@ -20,6 +21,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -35,6 +37,9 @@ import zero.foundation.persistence.PersistenceException
 class ProtectionAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var receiverRegistered = false
+    private var foregroundPackage: String? = null
+    private var foregroundClass: String? = null
+    private var lastContentCheckMillis = 0L
 
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -68,19 +73,37 @@ class ProtectionAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        val packageName = event.packageName?.toString() ?: return
-        val className = event.className?.toString()
         val c = coordinator() ?: return
+        val eventPackage = event.packageName?.toString()
+        when (event.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                if (eventPackage == null) return
+                foregroundPackage = eventPackage
+                foregroundClass = event.className?.toString()
+                checkForeground(c, eventPackage, foregroundClass)
+            }
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+            AccessibilityEvent.TYPE_WINDOWS_CHANGED -> {
+                // Content changes inside the app in front, such as a resumed browser, a search, or a
+                // navigation within Settings, don't open a new window. Re-check the app in front for them.
+                val current = foregroundPackage ?: return
+                if (eventPackage != null && eventPackage != current) return
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastContentCheckMillis < CONTENT_CHECK_INTERVAL_MILLIS) return
+                lastContentCheckMillis = now
+                checkForeground(c, current, foregroundClass)
+            }
+            else -> return
+        }
+    }
 
-        // Installer and Settings windows are read so install and Zero-specific screens can be recognized.
+    /** The same check for the app in front, whether it just opened or changed inside. */
+    private fun checkForeground(c: ProtectionCoordinator, packageName: String, className: String?) {
         val readable = SelfScreenClassifier.readsContentFor(packageName, className)
         val texts = if (readable) readTexts() else emptyList()
         val screen = SelfScreenClassifier.classify(packageName, texts, SELF_LABEL, className)
-        if (readable) {
-            Log.i(TAG, "installer-like window pkg=$packageName screen=$screen")
-        }
         if (screen != SelfScreen.NONE) {
+            Log.i(TAG, "self screen pkg=$packageName class=$className screen=$screen")
             if (c.onSelfScreen(screen) == ProtectionAction.RedirectHome) {
                 performGlobalAction(GLOBAL_ACTION_HOME)
             }
@@ -153,6 +176,7 @@ class ProtectionAccessibilityService : AccessibilityService() {
     private companion object {
         const val TAG = "ZeroProtection"
         const val TICK_MILLIS = 1_000L
+        const val CONTENT_CHECK_INTERVAL_MILLIS = 300L
         const val SELF_LABEL = "Zero"
     }
 }
