@@ -107,3 +107,24 @@ Old v0.1 enforcement code (`MainActivity`, `ZeroAccessibilityService`) and the o
 - The main, Protection, and Protected apps screens use shared theme-based components. The Protection screen shows live state, remaining time, protected-app count, minimum controls, start gating, and recent events; the Protected apps screen shows protected labels and package identifiers and retains an add-only confirmation flow.
 - History is a read-only screen that displays the newest 200 events grouped by local date. Event wall-clock timestamps are for display only and never affect protection timing.
 - Contrast calculations use WCAG relative luminance; the token checks require AA contrast for normal text and status/accent colors against the background.
+
+## App time budgets (planned)
+
+- Each app has its own budget: access time per visit, cooldown between visits, and a daily cap. Nothing is fixed by default. Suggested starting values are only prompts.
+- Time counts only while the app is in front. It pauses when the screen is off. Each budget resets each day.
+- Rule: budgets only tighten. Access time can shrink, the cooldown can lengthen, and the daily cap can drop. Loosening a budget or removing it is never allowed, at any time.
+- Calls do not count toward a budget.
+- Budgets apply during the night lock. Tightening is allowed at any time.
+
+## Install-attempt penalty (planned)
+
+- The first install attempt of the day gives a 5 minute lock. Each further attempt adds 5 minutes, capped at 30 minutes.
+- The attempt count resets at the start of each day.
+- Implemented as pure rules in feature-protection (PenaltyRules). The penalty screen and its storage come next.
+
+## Night lock (planned)
+
+- Default window: 9 pm to 8 am. The window is fixed for now.
+- During the window, streak edits, deletions, history deletions, and imports are refused. Checking in, logging today, and reordering still work.
+- Rule file: NightLock. Enforcement is in the streak store.
+- Not yet committed to the remote; pending the next phase.
