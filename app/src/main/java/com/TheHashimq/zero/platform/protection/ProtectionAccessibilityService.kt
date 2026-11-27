@@ -1,24 +1,26 @@
 /*
  * MODULE: app (accessibility adapter for protection)
- * PURPOSE: Checks the app in front whenever it opens or changes, and sends the user Home when told to.
+ * PURPOSE: Checks the app in front whenever it opens or changes, and redirects blocked apps Home.
  * TAKES: Window-state and content-change events, screen-off broadcasts, and a periodic tick.
- * GIVES: Global Home action when the coordinator returns RedirectHome.
+ * GIVES: Global Home action and delayed background-process stop when the coordinator returns RedirectHome.
  * OWNS: The foreground app, the throttle timestamp, the screen-off receiver, and the tick handler.
  * DOES NOT OWN: Protection decisions, persistence, or events.
  * DEPENDENCIES: feature-protection-runtime, feature-protection, ZeroApplication, Android accessibility APIs.
  * CONTRACT: A new window and any content change inside the app in front run the same check. Content checks are
  *           throttled to one per 300 ms. Text is read only on installer and Settings windows, checked in memory,
- *           and never stored or logged. Sends Home only on RedirectHome.
+ *           and never stored or logged. Redirects Home only on RedirectHome.
  * FAILURE BEHAVIOR: Persistence failures are logged and retried on the next event or tick.
  *                   A missing coordinator means no action.
  */
 package com.TheHashimq.zero.platform.protection
 
 import android.accessibilityservice.AccessibilityService
+import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -105,15 +107,36 @@ class ProtectionAccessibilityService : AccessibilityService() {
         if (screen != SelfScreen.NONE) {
             Log.i(TAG, "self screen pkg=$packageName class=$className screen=$screen")
             if (c.onSelfScreen(screen) == ProtectionAction.RedirectHome) {
-                performGlobalAction(GLOBAL_ACTION_HOME)
+                redirectHome(packageName)
             }
             return
         }
 
         if (c.onForegroundChanged(packageName) == ProtectionAction.RedirectHome) {
-            performGlobalAction(GLOBAL_ACTION_HOME)
+            redirectHome(packageName)
         }
     }
+
+    /** Sends the user Home, then stops the blocked app's background process so it can't resume. */
+    private fun redirectHome(blockedPackage: String) {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        val homePackage = homePackage() ?: return
+        if (blockedPackage == this.packageName || blockedPackage == homePackage) return
+        handler.postDelayed({ stopBackground(blockedPackage) }, KILL_DELAY_MILLIS)
+        handler.postDelayed({ stopBackground(blockedPackage) }, KILL_RETRY_MILLIS)
+    }
+
+    private fun stopBackground(blockedPackage: String) {
+        val manager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return
+        manager.killBackgroundProcesses(blockedPackage)
+    }
+
+    /** The package of the default home screen app, which Zero must never stop. */
+    private fun homePackage(): String? =
+        packageManager.resolveActivity(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+            PackageManager.MATCH_DEFAULT_ONLY,
+        )?.activityInfo?.packageName
 
     override fun onInterrupt() {}
 
@@ -177,6 +200,8 @@ class ProtectionAccessibilityService : AccessibilityService() {
         const val TAG = "ZeroProtection"
         const val TICK_MILLIS = 1_000L
         const val CONTENT_CHECK_INTERVAL_MILLIS = 300L
+        const val KILL_DELAY_MILLIS = 400L
+        const val KILL_RETRY_MILLIS = 2_000L
         const val SELF_LABEL = "Zero"
     }
 }
