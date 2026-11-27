@@ -1,26 +1,30 @@
 /*
  * MODULE: app (accessibility adapter for protection)
- * PURPOSE: Checks the app in front whenever it opens or changes, and redirects blocked apps Home.
+ * PURPOSE: Checks the app in front whenever it opens or changes, redirects blocked apps Home, and removes
+ *          their cards from Recents.
  * TAKES: Window-state and content-change events, screen-off broadcasts, and a periodic tick.
- * GIVES: Global Home action and delayed background-process stop when the coordinator returns RedirectHome.
+ * GIVES: Global Home and Recents actions, and a swipe on the blocked app's Recents card.
  * OWNS: The foreground app, the throttle timestamp, the screen-off receiver, and the tick handler.
  * DOES NOT OWN: Protection decisions, persistence, or events.
  * DEPENDENCIES: feature-protection-runtime, feature-protection, ZeroApplication, Android accessibility APIs.
  * CONTRACT: A new window and any content change inside the app in front run the same check. Content checks are
  *           throttled to one per 300 ms. Text is read only on installer and Settings windows, checked in memory,
- *           and never stored or logged. Redirects Home only on RedirectHome.
- * FAILURE BEHAVIOR: Persistence failures are logged and retried on the next event or tick.
+ *           and never stored or logged. Zero and the home screen are never removed from Recents.
+ * FAILURE BEHAVIOR: If the card isn't found, nothing is swiped and the user still goes Home.
+ *                   Persistence failures are logged and retried on the next event or tick.
  *                   A missing coordinator means no action.
  */
 package com.TheHashimq.zero.platform.protection
 
 import android.accessibilityservice.AccessibilityService
-import android.app.ActivityManager
+import android.accessibilityservice.GestureDescription
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Path
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -117,21 +121,118 @@ class ProtectionAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** Sends the user Home, then stops the blocked app's background process so it can't resume. */
+    /** Sends the user Home, then removes the blocked app's card from Recents. */
     private fun redirectHome(blockedPackage: String) {
         performGlobalAction(GLOBAL_ACTION_HOME)
         val homePackage = homePackage() ?: return
         if (blockedPackage == this.packageName || blockedPackage == homePackage) return
-        handler.postDelayed({ stopBackground(blockedPackage) }, KILL_DELAY_MILLIS)
-        handler.postDelayed({ stopBackground(blockedPackage) }, KILL_RETRY_MILLIS)
+        handler.postDelayed({ removeFromRecents(blockedPackage) }, RECENTS_OPEN_DELAY_MILLIS)
     }
 
-    private fun stopBackground(blockedPackage: String) {
-        val manager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return
-        manager.killBackgroundProcesses(blockedPackage)
+    /** Opens Recents, swipes the blocked app's card away if it is there, and goes Home again. */
+    private fun removeFromRecents(blockedPackage: String) {
+        val label = labelOf(blockedPackage)
+        if (label == null) {
+            returnHome()
+            return
+        }
+        if (!performGlobalAction(GLOBAL_ACTION_RECENTS)) {
+            Log.w(TAG, "recents: unable to open for pkg=$blockedPackage")
+            returnHome()
+            return
+        }
+        handler.postDelayed({
+            val bounds = findCardBounds(blockedPackage, label)
+            if (bounds == null) {
+                Log.i(TAG, "recents: pkg=$blockedPackage label=$label swiped=false")
+                returnHome()
+                return@postDelayed
+            }
+
+            val accepted = swipeAwayCard(bounds, blockedPackage, label)
+            Log.i(TAG, "recents: pkg=$blockedPackage label=$label swiped=$accepted")
+            if (!accepted) returnHome()
+        }, RECENTS_SETTLE_MILLIS)
     }
 
-    /** The package of the default home screen app, which Zero must never stop. */
+    private fun returnHome() {
+        if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
+            Log.w(TAG, "recents: unable to return Home")
+        }
+    }
+
+    private fun labelOf(blockedPackage: String): String? =
+        try {
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(blockedPackage, 0)).toString()
+        } catch (failure: PackageManager.NameNotFoundException) {
+            Log.w(TAG, "recents: unable to resolve label for pkg=$blockedPackage", failure)
+            null
+        }
+
+    /** Swipes up from the matching app label. Returns false when no gesture can be dispatched. */
+    private fun swipeAwayCard(bounds: Rect, blockedPackage: String, label: String): Boolean {
+        if (bounds.isEmpty) return false
+        val x = bounds.centerX().toFloat()
+        val startY = bounds.centerY().toFloat()
+        val endY = (startY - resources.displayMetrics.heightPixels * 0.5f).coerceAtLeast(0f)
+        val path = Path().apply {
+            moveTo(x, startY)
+            lineTo(x, endY)
+        }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0L, SWIPE_DURATION_MILLIS))
+            .build()
+        return dispatchGesture(
+            gesture,
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    Log.i(TAG, "recents: swipe completed for pkg=$blockedPackage label=$label")
+                    returnHome()
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    Log.w(TAG, "recents: swipe cancelled for pkg=$blockedPackage label=$label")
+                    returnHome()
+                }
+            },
+            handler,
+        )
+    }
+
+    /** Reads only the active window so text behind Recents cannot trigger a swipe. */
+    private fun findCardBounds(blockedPackage: String, label: String): Rect? {
+        val root = rootInActiveWindow ?: return null
+        return try {
+            val rootPackage = root.packageName?.toString()
+            if (
+                rootPackage != homePackage() &&
+                rootPackage != SYSTEM_UI_PACKAGE
+            ) return null
+            if (rootPackage == blockedPackage || rootPackage == packageName) return null
+            findTextBounds(root, label)
+        } finally {
+            @Suppress("DEPRECATION")
+            root.recycle()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun findTextBounds(node: AccessibilityNodeInfo, label: String): Rect? {
+        if (node.text?.toString()?.trim() == label) {
+            return Rect().also { node.getBoundsInScreen(it) }
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            try {
+                findTextBounds(child, label)?.let { return it }
+            } finally {
+                child.recycle()
+            }
+        }
+        return null
+    }
+
+    /** The package of the default home screen app, which Zero must never remove from Recents. */
     private fun homePackage(): String? =
         packageManager.resolveActivity(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
@@ -200,8 +301,10 @@ class ProtectionAccessibilityService : AccessibilityService() {
         const val TAG = "ZeroProtection"
         const val TICK_MILLIS = 1_000L
         const val CONTENT_CHECK_INTERVAL_MILLIS = 300L
-        const val KILL_DELAY_MILLIS = 400L
-        const val KILL_RETRY_MILLIS = 2_000L
+        const val RECENTS_OPEN_DELAY_MILLIS = 350L
+        const val RECENTS_SETTLE_MILLIS = 700L
+        const val SWIPE_DURATION_MILLIS = 250L
+        const val SYSTEM_UI_PACKAGE = "com.android.systemui"
         const val SELF_LABEL = "Zero"
     }
 }
