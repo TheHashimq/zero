@@ -1,16 +1,18 @@
 /*
  * MODULE: app (accessibility adapter for protection)
  * PURPOSE: Checks the app in front whenever it opens or changes, redirects blocked apps Home, and removes
- *          their cards from Recents.
+ *          protected app cards from Recents when that screen is open.
  * TAKES: Window-state and content-change events, screen-off broadcasts, and a periodic tick.
- * GIVES: Global Home and Recents actions, and a swipe on the blocked app's Recents card.
+ * GIVES: Global Home and Recents actions, and swipes on protected app cards in Recents.
  * OWNS: The foreground app, the throttle timestamp, the screen-off receiver, and the tick handler.
  * DOES NOT OWN: Protection decisions, persistence, or events.
  * DEPENDENCIES: feature-protection-runtime, feature-protection, ZeroApplication, Android accessibility APIs.
  * CONTRACT: A new window and any content change inside the app in front run the same check. Content checks are
  *           throttled to one per 300 ms. Text is read only on installer and Settings windows, checked in memory,
  *           and never stored or logged. Zero and the home screen are never removed from Recents.
- * FAILURE BEHAVIOR: If the card isn't found, nothing is swiped and the user still goes Home.
+ *           Protected cards are not removed during Grace.
+ * FAILURE BEHAVIOR: If an automatic card isn't found, nothing is swiped and the user still goes Home.
+ *                   Manual Recents scans leave the current screen unchanged when no card is found.
  *                   Persistence failures are logged and retried on the next event or tick.
  *                   A missing coordinator means no action.
  */
@@ -35,6 +37,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.content.ContextCompat
 import com.TheHashimq.zero.ZeroApplication
 import zero.feature.protection.ProtectionAction
+import zero.feature.protection.ProtectionState
 import zero.feature.protection.SelfScreen
 import zero.feature.protection.SelfScreenClassifier
 import zero.feature.protection.runtime.ProtectionCoordinator
@@ -48,6 +51,7 @@ class ProtectionAccessibilityService : AccessibilityService() {
     private var foregroundClass: String? = null
     private var lastContentCheckMillis = 0L
     private var lastRecentsMillis = 0L
+    private var lastRecentsScanMillis = 0L
 
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -89,9 +93,15 @@ class ProtectionAccessibilityService : AccessibilityService() {
                 foregroundPackage = eventPackage
                 foregroundClass = event.className?.toString()
                 checkForeground(c, eventPackage, foregroundClass)
+                if (isLauncherOrSystemUi(eventPackage)) scanRecents(c, force = true)
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
             AccessibilityEvent.TYPE_WINDOWS_CHANGED -> {
+                val sourcePackage = eventPackage ?: foregroundPackage
+                if (sourcePackage != null && isLauncherOrSystemUi(sourcePackage)) {
+                    scanRecents(c)
+                    return
+                }
                 // Content changes inside the app in front, such as a resumed browser, a search, or a
                 // navigation within Settings, don't open a new window. Re-check the app in front for them.
                 val current = foregroundPackage ?: return
@@ -184,6 +194,80 @@ class ProtectionAccessibilityService : AccessibilityService() {
         if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
             Log.w(TAG, "recents: unable to return Home")
         }
+    }
+
+    /** True for the home screen launcher and the system UI, where Recents is drawn. */
+    private fun isLauncherOrSystemUi(pkg: String): Boolean =
+        pkg == SYSTEM_UI_PACKAGE || pkg == homePackage()
+
+    /** The protected apps from the saved list. Empty when protection hasn't loaded. */
+    private fun protectedPackages(): Set<String> =
+        (application as ZeroApplication).protectionModule.repository?.packages().orEmpty()
+
+    /**
+     * Scans the launcher or system UI for a Recents screen and removes one protected app card.
+     * During Grace, protected apps are allowed and their cards are left alone.
+     */
+    private fun scanRecents(c: ProtectionCoordinator, force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && now - lastRecentsScanMillis < RECENTS_SCAN_INTERVAL_MILLIS) return
+        lastRecentsScanMillis = now
+        if (c.state() is ProtectionState.Grace) return
+        val root = rootInActiveWindow ?: return
+        try {
+            val recentsOpen = containsText(root) { text ->
+                RECENTS_MARKERS.any { text.equals(it, ignoreCase = true) }
+            }
+            if (!recentsOpen) return
+            val home = homePackage()
+            for (pkg in protectedPackages()) {
+                if (pkg == packageName || pkg == home || pkg == SYSTEM_UI_PACKAGE) continue
+                val label = labelOf(pkg) ?: continue
+                val bounds = findTextBounds(root, label) ?: continue
+                if (swipeCardSilently(bounds)) {
+                    Log.i(TAG, "recents: manual scan swiped pkg=$pkg label=$label")
+                    return
+                }
+            }
+        } finally {
+            @Suppress("DEPRECATION")
+            root.recycle()
+        }
+    }
+
+    /** Swipes up on a card and stays on the current screen. Returns false when no gesture can be sent. */
+    private fun swipeCardSilently(bounds: Rect): Boolean {
+        if (bounds.isEmpty) return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        val x = bounds.centerX().toFloat()
+        val startY = bounds.centerY().toFloat()
+        val endY = (startY - resources.displayMetrics.heightPixels * 0.5f).coerceAtLeast(0f)
+        val path = Path().apply {
+            moveTo(x, startY)
+            lineTo(x, endY)
+        }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0L, SWIPE_DURATION_MILLIS))
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /** True when any text on the screen satisfies [match]. Child nodes are recycled as they're checked. */
+    @Suppress("DEPRECATION")
+    private fun containsText(node: AccessibilityNodeInfo, match: (String) -> Boolean): Boolean {
+        val text = node.text?.toString()?.trim()
+        if (text != null && match(text)) return true
+        val description = node.contentDescription?.toString()?.trim()
+        if (description != null && match(description)) return true
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            try {
+                if (containsText(child, match)) return true
+            } finally {
+                child.recycle()
+            }
+        }
+        return false
     }
 
     private fun labelOf(blockedPackage: String): String? =
@@ -333,6 +417,8 @@ class ProtectionAccessibilityService : AccessibilityService() {
         const val SWIPE_DURATION_MILLIS = 250L
         const val SYSTEM_UI_PACKAGE = "com.android.systemui"
         const val RECENTS_COOLDOWN_MILLIS = 2_000L
+        const val RECENTS_SCAN_INTERVAL_MILLIS = 800L
+        val RECENTS_MARKERS = listOf("Clear all", "Close all")
         const val SELF_LABEL = "Zero"
     }
 }
