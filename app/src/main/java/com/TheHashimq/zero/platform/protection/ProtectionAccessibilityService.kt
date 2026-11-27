@@ -25,6 +25,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Path
 import android.graphics.Rect
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -46,6 +47,7 @@ class ProtectionAccessibilityService : AccessibilityService() {
     private var foregroundPackage: String? = null
     private var foregroundClass: String? = null
     private var lastContentCheckMillis = 0L
+    private var lastRecentsMillis = 0L
 
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -131,28 +133,51 @@ class ProtectionAccessibilityService : AccessibilityService() {
 
     /** Opens Recents, swipes the blocked app's card away if it is there, and goes Home again. */
     private fun removeFromRecents(blockedPackage: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastRecentsMillis < RECENTS_COOLDOWN_MILLIS) return
+        lastRecentsMillis = now
+
+        if (skipRecentsIfUserMovedOn(blockedPackage)) return
+
         val label = labelOf(blockedPackage)
         if (label == null) {
-            returnHome()
+            returnHomeUnlessUserMovedOn(blockedPackage)
             return
         }
+        if (skipRecentsIfUserMovedOn(blockedPackage)) return
         if (!performGlobalAction(GLOBAL_ACTION_RECENTS)) {
             Log.w(TAG, "recents: unable to open for pkg=$blockedPackage")
-            returnHome()
+            returnHomeUnlessUserMovedOn(blockedPackage)
             return
         }
         handler.postDelayed({
+            if (skipRecentsIfUserMovedOn(blockedPackage)) return@postDelayed
             val bounds = findCardBounds(blockedPackage, label)
             if (bounds == null) {
                 Log.i(TAG, "recents: pkg=$blockedPackage label=$label swiped=false")
-                returnHome()
+                returnHomeUnlessUserMovedOn(blockedPackage)
                 return@postDelayed
             }
 
             val accepted = swipeAwayCard(bounds, blockedPackage, label)
             Log.i(TAG, "recents: pkg=$blockedPackage label=$label swiped=$accepted")
-            if (!accepted) returnHome()
+            if (!accepted) returnHomeUnlessUserMovedOn(blockedPackage)
         }, RECENTS_SETTLE_MILLIS)
+    }
+
+    private fun skipRecentsIfUserMovedOn(blockedPackage: String): Boolean {
+        val current = foregroundPackage ?: return false
+        if (
+            current == blockedPackage ||
+            current == homePackage() ||
+            current == SYSTEM_UI_PACKAGE
+        ) return false
+        Log.i(TAG, "recents: skipped, user already in $current")
+        return true
+    }
+
+    private fun returnHomeUnlessUserMovedOn(blockedPackage: String) {
+        if (!skipRecentsIfUserMovedOn(blockedPackage)) returnHome()
     }
 
     private fun returnHome() {
@@ -172,6 +197,7 @@ class ProtectionAccessibilityService : AccessibilityService() {
     /** Swipes up from the matching app label. Returns false when no gesture can be dispatched. */
     private fun swipeAwayCard(bounds: Rect, blockedPackage: String, label: String): Boolean {
         if (bounds.isEmpty) return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         val x = bounds.centerX().toFloat()
         val startY = bounds.centerY().toFloat()
         val endY = (startY - resources.displayMetrics.heightPixels * 0.5f).coerceAtLeast(0f)
@@ -184,15 +210,15 @@ class ProtectionAccessibilityService : AccessibilityService() {
             .build()
         return dispatchGesture(
             gesture,
-            object : GestureResultCallback() {
+            object : AccessibilityService.GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
                     Log.i(TAG, "recents: swipe completed for pkg=$blockedPackage label=$label")
-                    returnHome()
+                    returnHomeUnlessUserMovedOn(blockedPackage)
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     Log.w(TAG, "recents: swipe cancelled for pkg=$blockedPackage label=$label")
-                    returnHome()
+                    returnHomeUnlessUserMovedOn(blockedPackage)
                 }
             },
             handler,
@@ -218,7 +244,8 @@ class ProtectionAccessibilityService : AccessibilityService() {
 
     @Suppress("DEPRECATION")
     private fun findTextBounds(node: AccessibilityNodeInfo, label: String): Rect? {
-        if (node.text?.toString()?.trim() == label) {
+        val description = node.contentDescription?.toString()?.trim()
+        if (node.text?.toString()?.trim() == label || description?.startsWith(label) == true) {
             return Rect().also { node.getBoundsInScreen(it) }
         }
         for (i in 0 until node.childCount) {
@@ -305,6 +332,7 @@ class ProtectionAccessibilityService : AccessibilityService() {
         const val RECENTS_SETTLE_MILLIS = 700L
         const val SWIPE_DURATION_MILLIS = 250L
         const val SYSTEM_UI_PACKAGE = "com.android.systemui"
+        const val RECENTS_COOLDOWN_MILLIS = 2_000L
         const val SELF_LABEL = "Zero"
     }
 }
